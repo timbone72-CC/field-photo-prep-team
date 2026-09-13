@@ -2,6 +2,8 @@ plugins {
     id 'com.android.application'
 }
 
+def stableTestKeystore = rootProject.file('ci/field-photo-prep-team-test.jks')
+
 android {
     namespace 'com.inandout.fieldphotoprep.team.internal'
     compileSdk 36
@@ -14,7 +16,20 @@ android {
         versionName '0.2-phase1-login-internal'
     }
 
+    // Public, non-production signer used only so internal test APK updates are stable.
+    signingConfigs {
+        stableTest {
+            storeFile stableTestKeystore
+            storePassword 'field-photo-prep-team-test'
+            keyAlias 'field-photo-prep-team-test'
+            keyPassword 'field-photo-prep-team-test'
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig signingConfigs.stableTest
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
