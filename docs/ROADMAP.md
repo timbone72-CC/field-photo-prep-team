@@ -35,7 +35,7 @@ Do not add tools, screens, settings, roles, services, or frameworks merely becau
 - Team should not be permanently coupled to Google Drive even though Google Drive is the initial photo destination.
 - Applied database migrations are mirrored under `supabase/migrations/` so the repository and live backend remain reproducible together.
 
-## Phase 0 — Separation and test foundation — IN PROGRESS
+## Phase 0 — Separation and test foundation — COMPLETE
 
 Goal: create a safe Team development area without risking the working V1 field app.
 
@@ -48,19 +48,19 @@ Required:
 - credentials kept outside GitHub;
 - Team and V1 installable side-by-side.
 
-Already complete:
+Completed and verified:
 - Team repository created;
 - Android internal/test and future production package identities documented separately from V1;
+- Team internal Android shell built with package `com.inandout.fieldphotoprep.team.internal`;
+- Team shell CI verified the APK build, application ID, and `Field Photo Prep Team Internal` label;
 - dedicated HNP test Google account created and secured by the owner;
 - test storage root created at `Field Photo Prep Team - HNP / TEST / Work Orders`;
 - Supabase project created separately for Team;
-- non-secret environment identity documented in the repository.
+- non-secret environment identity documented in the repository;
+- Team internal APK installed and opened successfully on the real Android phone while the existing V1 app remained installed;
+- existing Field Photo Prep V1 was opened afterward and confirmed to still work normally with its existing state intact.
 
-Still required for the gate:
-- create the Team Android project using the locked Team package identity;
-- verify Team and V1 install side-by-side and do not share app-private data.
-
-Gate: V1 and Team can coexist on the same phone without sharing or altering data.
+Gate: **SATISFIED.** V1 and Team coexist on the same phone as separate Android applications without replacing or disrupting V1.
 
 ## Phase 1 — Identity, login, and minimum data model — IN PROGRESS
 
