@@ -1,0 +1,40 @@
+name: Android Team Shell CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feat/**
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Build internal Team APK
+        run: gradle :app:assembleDebug
+      - name: Verify Team application ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          AAPT="$(find "${ANDROID_HOME}/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -f "${APK}"
+          test -n "${AAPT}"
+          "${AAPT}" dump badging "${APK}" | tee apk-badging.txt
+          grep -q "package: name='com.inandout.fieldphotoprep.team.internal'" apk-badging.txt
+          grep -q "application-label:'Field Photo Prep Team Internal'" apk-badging.txt
+      - name: Upload Team shell APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: field-photo-prep-team-internal-shell-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
