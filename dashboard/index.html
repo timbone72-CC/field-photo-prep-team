@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Field Photo Prep Team Admin</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="card" id="login-card">
+      <p class="eyebrow">Field Photo Prep Team</p>
+      <h1>Admin Login</h1>
+      <p class="muted">Phase 1 permission test. Supabase RLS decides which work orders the browser receives.</p>
+      <form id="login-form" autocomplete="on">
+        <label>Email
+          <input id="email" name="email" type="email" autocomplete="username" required>
+        </label>
+        <label>Password
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button id="sign-in" type="submit">Sign In</button>
+      </form>
+      <p id="login-status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="card hidden" id="results-card">
+      <div class="row between gap">
+        <div>
+          <p class="eyebrow">Authenticated Admin</p>
+          <h2 id="account-heading">Signed in</h2>
+        </div>
+        <button id="sign-out" class="secondary" type="button">Sign Out</button>
+      </div>
+
+      <div id="rls-result" class="check" role="status" aria-live="polite"></div>
+
+      <h2>Work Orders Returned By Server</h2>
+      <p class="muted">No organization or assignee filter is sent by this page. Rows below are whatever Supabase RLS allows this Admin session to read.</p>
+      <div id="work-orders" class="work-orders"></div>
+    </section>
+  </main>
+  <script src="app.js" defer></script>
+</body>
+</html>

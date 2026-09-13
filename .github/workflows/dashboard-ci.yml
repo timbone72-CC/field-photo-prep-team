@@ -1,0 +1,53 @@
+name: Admin Dashboard Gate CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feat/**
+
+jobs:
+  dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reject secrets, test-account PII, and persistent auth storage
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -n -E 'sb_secret_|service_role' dashboard; then
+            echo 'Forbidden elevated Supabase credential reference found in dashboard source.' >&2
+            exit 1
+          fi
+          if grep -R -n -E 'timbone72@gmail\.com|rushingl27@gmail\.com' dashboard; then
+            echo 'Test-account email must not be committed to dashboard source.' >&2
+            exit 1
+          fi
+          if grep -R -n -E 'localStorage|sessionStorage' dashboard; then
+            echo 'Phase 1 dashboard must keep auth state in memory only.' >&2
+            exit 1
+          fi
+      - name: Check dashboard JavaScript syntax
+        run: node --check dashboard/app.js
+      - name: Verify dashboard gate markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'TEST-0001' dashboard/app.js
+          grep -q 'TEST-0002-ADMIN-ONLY' dashboard/app.js
+          grep -q 'TEST-OTHER-ORG-CONTROL' dashboard/app.js
+          grep -q 'RLS CHECK: PASS' dashboard/app.js
+          if grep -n -E 'organization_id=|assigned_user_id=' dashboard/app.js; then
+            echo 'Dashboard work-order request must not use client-side authorization filters.' >&2
+            exit 1
+          fi
+      - name: Upload Phase 1 admin dashboard
+        uses: actions/upload-artifact@v4
+        with:
+          name: field-photo-prep-team-phase1-admin-dashboard
+          path: dashboard/
+          if-no-files-found: error
