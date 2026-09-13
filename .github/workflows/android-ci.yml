@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - feat/**
+      - fix/**
 
 jobs:
   build:
@@ -46,6 +47,32 @@ jobs:
           grep -q "application-label:'Field Photo Prep Team Internal'" apk-badging.txt
           "${AAPT}" dump permissions "${APK}" | tee apk-permissions.txt
           grep -q "android.permission.INTERNET" apk-permissions.txt
+      - name: Verify stable Team test APK signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APKSIGNER="$(find "${ANDROID_HOME}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "${APKSIGNER}"
+          "${APKSIGNER}" verify --print-certs "${APK}" > apk-signer.txt
+          cat apk-signer.txt
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          expected = "1bbff192f97a8a24c6f812d77df6847eb9759b3afb3c4b210d9e6c251f4eecfe"
+          text = pathlib.Path("apk-signer.txt").read_text(encoding="utf-8")
+          match = re.search(r"certificate SHA-256 digest:\s*([0-9a-fA-F]+)", text, re.IGNORECASE)
+          if not match:
+              print("Could not locate the APK certificate SHA-256 digest in apksigner output.", file=sys.stderr)
+              sys.exit(1)
+          actual = match.group(1).lower()
+          print(f"Expected signer SHA-256: {expected}")
+          print(f"Actual signer SHA-256:   {actual}")
+          if actual != expected:
+              sys.exit(1)
+          PY
       - name: Upload Phase 1 login APK
         uses: actions/upload-artifact@v4
         with:
