@@ -12,7 +12,7 @@ body {
   background: #f4f5f7;
 }
 
-button, input { font: inherit; }
+button, input, select, textarea { font: inherit; }
 
 .shell {
   width: min(960px, calc(100% - 32px));
@@ -48,7 +48,7 @@ h2 { margin-top: 28px; }
 form {
   display: grid;
   gap: 16px;
-  max-width: 520px;
+  max-width: 700px;
   margin-top: 24px;
 }
 
@@ -58,13 +58,18 @@ label {
   font-weight: 700;
 }
 
-input {
+input,
+select,
+textarea {
   width: 100%;
   padding: 12px 14px;
   border: 1px solid #afb4bb;
   border-radius: 10px;
   background: #fff;
+  color: #1d1d1f;
 }
+
+textarea { resize: vertical; }
 
 button {
   cursor: pointer;
@@ -74,6 +79,11 @@ button {
   font-weight: 800;
   background: #1d1d1f;
   color: #fff;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 button.secondary {
@@ -101,6 +111,23 @@ button.secondary {
   border: 1px solid #8bc49e;
 }
 
+.admin-action {
+  margin: 30px 0;
+  padding: 20px;
+  border: 1px solid #d8dbe0;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.admin-action h2 { margin-top: 0; }
+.admin-form { margin-top: 18px; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
 .work-orders {
   display: grid;
   gap: 12px;
@@ -120,4 +147,5 @@ button.secondary {
   .card { padding: 20px; }
   .row { display: block; }
   .secondary { width: 100%; margin-top: 12px; }
+  .form-grid { grid-template-columns: 1fr; }
 }
