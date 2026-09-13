@@ -27,13 +27,17 @@ jobs:
             echo 'Test-account email must not be committed to dashboard source.' >&2
             exit 1
           fi
+          if grep -R -n -E '57d08e76-7354-4edb-adea-027c805ac62c|e7208389-fb9f-4061-9fca-56301c021847' dashboard; then
+            echo 'Test-account UUID must not be committed to dashboard source.' >&2
+            exit 1
+          fi
           if grep -R -n -E 'localStorage|sessionStorage' dashboard; then
-            echo 'Phase 1 dashboard must keep auth state in memory only.' >&2
+            echo 'Admin dashboard must keep auth state in memory only.' >&2
             exit 1
           fi
       - name: Check dashboard JavaScript syntax
         run: node --check dashboard/app.js
-      - name: Verify dashboard gate markers
+      - name: Verify authorization gate markers
         shell: bash
         run: |
           set -euo pipefail
@@ -42,12 +46,21 @@ jobs:
           grep -q 'TEST-OTHER-ORG-CONTROL' dashboard/app.js
           grep -q 'RLS CHECK: PASS' dashboard/app.js
           if grep -n -E 'organization_id=|assigned_user_id=' dashboard/app.js; then
-            echo 'Dashboard work-order request must not use client-side authorization filters.' >&2
+            echo 'Dashboard work-order read request must not use client-side authorization filters.' >&2
             exit 1
           fi
-      - name: Upload Phase 1 admin dashboard
+      - name: Verify Phase 2 create and assignment path
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'admin_list_assignable_users' dashboard/app.js
+          grep -q 'admin_create_work_order' dashboard/app.js
+          grep -q 'id="create-wo-form"' dashboard/index.html
+          grep -q 'id="assignee"' dashboard/index.html
+          grep -q 'Create &amp; Assign' dashboard/index.html
+      - name: Upload admin dashboard
         uses: actions/upload-artifact@v4
         with:
-          name: field-photo-prep-team-phase1-admin-dashboard
+          name: field-photo-prep-team-admin-dashboard
           path: dashboard/
           if-no-files-found: error
