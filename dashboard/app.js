@@ -14,6 +14,15 @@ const signOutButton = document.getElementById('sign-out');
 const accountHeading = document.getElementById('account-heading');
 const rlsResult = document.getElementById('rls-result');
 const workOrders = document.getElementById('work-orders');
+const createForm = document.getElementById('create-wo-form');
+const createButton = document.getElementById('create-wo');
+const createStatus = document.getElementById('create-status');
+const woNumberInput = document.getElementById('wo-number');
+const propertyAddressInput = document.getElementById('property-address');
+const workTypeInput = document.getElementById('work-type');
+const instructionsInput = document.getElementById('instructions');
+const dueDateInput = document.getElementById('due-date');
+const assigneeSelect = document.getElementById('assignee');
 
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -34,14 +43,53 @@ loginForm.addEventListener('submit', async (event) => {
       throw new Error('This account is not authorized as a Team Admin.');
     }
 
-    const rows = await fetchWorkOrders();
+    const [rows, assignableUsers] = await Promise.all([
+      fetchWorkOrders(),
+      fetchAssignableUsers()
+    ]);
+
     verifyAdminRls(rows, metadata.organization_id);
-    renderSignedIn(rows, metadata.organization_id);
+    renderSignedIn(rows, assignableUsers, metadata.organization_id);
   } catch (error) {
     accessToken = null;
     currentUser = null;
     passwordInput.value = '';
     setLoginStatus(error instanceof Error ? error.message : 'Sign-in failed.', true);
+  }
+});
+
+createForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  setCreateStatus('Creating work order…', false);
+  createButton.disabled = true;
+
+  try {
+    const createdRows = await createWorkOrder({
+      woNumber: woNumberInput.value.trim(),
+      propertyAddress: propertyAddressInput.value.trim(),
+      workType: workTypeInput.value.trim(),
+      instructions: instructionsInput.value.trim(),
+      dueDate: dueDateInput.value,
+      assignedUserId: assigneeSelect.value
+    });
+
+    const created = Array.isArray(createdRows) ? createdRows[0] : null;
+    if (!created || !created.work_order_id) {
+      throw new Error('The server did not return the created work order.');
+    }
+
+    setCreateStatus(`Created and assigned ${created.wo_number}.`, false);
+    createForm.reset();
+
+    const metadata = currentUser.app_metadata || {};
+    const rows = await fetchWorkOrders();
+    verifyAdminRls(rows, metadata.organization_id);
+    renderRlsSummary(rows);
+    renderWorkOrders(rows, metadata.organization_id);
+  } catch (error) {
+    setCreateStatus(error instanceof Error ? error.message : 'Unable to create work order.', true);
+  } finally {
+    createButton.disabled = false;
   }
 });
 
@@ -51,6 +99,10 @@ signOutButton.addEventListener('click', () => {
   workOrders.replaceChildren();
   rlsResult.textContent = '';
   accountHeading.textContent = 'Signed in';
+  createForm.reset();
+  assigneeSelect.replaceChildren(new Option('Sign in to load Team users', ''));
+  assigneeSelect.disabled = true;
+  createStatus.textContent = '';
   resultsCard.classList.add('hidden');
   loginCard.classList.remove('hidden');
   emailInput.focus();
@@ -102,7 +154,7 @@ async function fetchWorkOrders() {
   ].join(',');
 
   // Intentionally broad request: no organization_id or assigned_user_id filter.
-  // Supabase RLS is the authorization boundary being tested here.
+  // Supabase RLS is the authorization boundary for rows returned here.
   const response = await fetch(
     `${SUPABASE_URL}/rest/v1/work_orders?select=${encodeURIComponent(select)}&order=created_at.asc`,
     { headers: authHeaders() }
@@ -110,6 +162,51 @@ async function fetchWorkOrders() {
 
   if (!response.ok) {
     throw new Error(await readableError(response, 'Unable to load work orders.'));
+  }
+
+  return response.json();
+}
+
+async function fetchAssignableUsers() {
+  requireAccessToken();
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_list_assignable_users`, {
+    method: 'POST',
+    headers: authHeaders(true),
+    body: '{}'
+  });
+
+  if (!response.ok) {
+    throw new Error(await readableError(response, 'Unable to load Team users.'));
+  }
+
+  return response.json();
+}
+
+async function createWorkOrder({
+  woNumber,
+  propertyAddress,
+  workType,
+  instructions,
+  dueDate,
+  assignedUserId
+}) {
+  requireAccessToken();
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_create_work_order`, {
+    method: 'POST',
+    headers: authHeaders(true),
+    body: JSON.stringify({
+      p_wo_number: woNumber,
+      p_property_address: propertyAddress,
+      p_work_type: workType,
+      p_instructions: instructions || null,
+      p_due_date: dueDate,
+      p_assigned_user_id: assignedUserId
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(await readableError(response, 'Unable to create work order.'));
   }
 
   return response.json();
@@ -135,17 +232,38 @@ function verifyAdminRls(rows, expectedOrganizationId) {
   }
 }
 
-function renderSignedIn(rows, organizationId) {
+function renderSignedIn(rows, assignableUsers, organizationId) {
   loginCard.classList.add('hidden');
   resultsCard.classList.remove('hidden');
   accountHeading.textContent = `Signed in as ${currentUser.email}`;
 
+  renderRlsSummary(rows);
+  renderAssignableUsers(assignableUsers);
+  renderWorkOrders(rows, organizationId);
+}
+
+function renderRlsSummary(rows) {
   rlsResult.className = 'check pass';
   rlsResult.textContent =
     `RLS CHECK: PASS\nServer returned ${rows.length} in-organization work order(s). ` +
-    'Both Team controls are visible to Admin, the other-organization control is hidden, ' +
+    'Required Team control rows are visible to Admin, the other-organization control is hidden, ' +
     'and no client-side organization filter was used.';
+}
 
+function renderAssignableUsers(users) {
+  if (!Array.isArray(users) || users.length === 0) {
+    throw new Error('No assignable Team users were returned.');
+  }
+
+  assigneeSelect.replaceChildren(new Option('Choose Team user', ''));
+  for (const user of users) {
+    const option = new Option(`${user.email} (${user.role})`, user.user_id);
+    assigneeSelect.add(option);
+  }
+  assigneeSelect.disabled = false;
+}
+
+function renderWorkOrders(rows, organizationId) {
   workOrders.replaceChildren();
   for (const row of rows) {
     const article = document.createElement('article');
@@ -171,11 +289,17 @@ function renderSignedIn(rows, organizationId) {
   workOrders.append(orgNote);
 }
 
-function authHeaders() {
-  return {
+function authHeaders(withJson = false) {
+  const headers = {
     apikey: SUPABASE_PUBLISHABLE_KEY,
     Authorization: `Bearer ${accessToken}`
   };
+
+  if (withJson) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  return headers;
 }
 
 function requireAccessToken() {
@@ -196,4 +320,9 @@ async function readableError(response, fallback) {
 function setLoginStatus(message, isError) {
   loginStatus.textContent = message;
   loginStatus.classList.toggle('error', isError);
+}
+
+function setCreateStatus(message, isError) {
+  createStatus.textContent = message;
+  createStatus.classList.toggle('error', isError);
 }
