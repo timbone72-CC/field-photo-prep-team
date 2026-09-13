@@ -19,9 +19,12 @@ Do not add tools, screens, settings, roles, services, or frameworks merely becau
 ## Decisions already made
 
 - Team is a separate repository and Android app from Field Photo Prep V1.
-- Team will use permanent IDs for companies, users, work orders, and photos.
+- Team uses permanent UUID identity for organizations, Supabase Auth users, work orders, and photos.
 - Initial user roles are `ADMIN` and `CONTRACTOR` only.
-- Supabase is the planned backend for authentication, work-order data, assignments, permissions, and status.
+- Supabase Auth + Postgres + RLS is the backend foundation for login, work-order data, assignments, permissions, and status.
+- Authorization facts such as `organization_id` and `role` live in server-controlled Auth `app_metadata`, not user-editable metadata.
+- There is no duplicate public `users` table in the initial model. Supabase Auth owns login identity.
+- The initial application data model is intentionally only three public tables: `organizations`, `work_orders`, and `photos`.
 - Android will keep downloaded work orders locally so assigned work remains usable offline.
 - Taking a photo and uploading a photo are separate operations.
 - Proven V1 camera/photo-protection behavior will be ported where appropriate rather than redesigned without reason.
@@ -30,6 +33,7 @@ Do not add tools, screens, settings, roles, services, or frameworks merely becau
 - Storage credentials are owner-managed and must never be committed to this repository.
 - Contractors will not receive the HNP storage-account password.
 - Team should not be permanently coupled to Google Drive even though Google Drive is the initial photo destination.
+- Applied database migrations are mirrored under `supabase/migrations/` so the repository and live backend remain reproducible together.
 
 ## Phase 0 — Separation and test foundation — IN PROGRESS
 
@@ -46,51 +50,120 @@ Required:
 
 Already complete:
 - Team repository created;
+- Android internal/test and future production package identities documented separately from V1;
 - dedicated HNP test Google account created and secured by the owner;
-- test storage root created at `Field Photo Prep Team - HNP / TEST / Work Orders`.
+- test storage root created at `Field Photo Prep Team - HNP / TEST / Work Orders`;
+- Supabase project created separately for Team;
+- non-secret environment identity documented in the repository.
+
+Still required for the gate:
+- create the Team Android project using the locked Team package identity;
+- verify Team and V1 install side-by-side and do not share app-private data.
 
 Gate: V1 and Team can coexist on the same phone without sharing or altering data.
 
-## Phase 1 — Identity, login, and minimum data model
+## Phase 1 — Identity, login, and minimum data model — IN PROGRESS
 
 Goal: establish the smallest backend foundation needed by both the dashboard and contractor app.
 
-Minimum records:
+### Authentication identity
 
-### Company
-- ID
-- name
+Supabase Auth owns user login identity and the permanent user UUID.
 
-### User
-- ID
-- company ID
-- name
-- login identity
-- role: `ADMIN` or `CONTRACTOR`
-- active/inactive
+Initial authorization claims are server-controlled:
+- `organization_id`
+- `role`: `ADMIN` or `CONTRACTOR`
+
+Do not use user-editable metadata for authorization.
+
+### Organization
+
+- `id` — permanent UUID
+- `name`
+- `created_at`
 
 ### Work Order
-- permanent Team WO ID
-- company ID
-- address
-- outside/customer WO number
-- work type
-- instructions
-- due date
-- assigned contractor ID
-- field status
+
+- `id` — permanent Team WO UUID
+- `organization_id`
+- `assigned_user_id`
+- `wo_number` — outside/customer WO number
+- `property_address`
+- `work_type`
+- `instructions`
+- `due_date`
+- `field_status`
+- `started_at`
+- `field_completed_at`
+- created/updated timestamps
+
+Initial field states:
+
+`ASSIGNED → IN_PROGRESS → FIELD_COMPLETE`
+
+`CANCELLED` is separate.
 
 ### Photo
-- permanent photo ID
-- Team WO ID
-- contractor ID
-- capture time
-- sync state
-- confirmed remote file identity when uploaded
 
-Authorization is enforced by the backend, not by hidden Android buttons.
+- `id` — permanent photo UUID created before capture
+- `work_order_id`
+- `captured_by`
+- `captured_at`
+- `sync_status`
+- `sha256`
+- `byte_size`
+- `remote_file_id`
+- `uploaded_at`
+- created/updated timestamps
 
-Gate: one admin and one contractor can sign in and see only what their role permits.
+Initial photo sync states:
+
+`WAITING → UPLOADING → UPLOADED`
+
+with `FAILED` and `UNCERTAIN` for problem/ambiguous outcomes.
+
+Field completion and photo synchronization remain separate facts.
+
+### Authorization boundary
+
+Authorization is enforced by the backend, not by hidden Android or dashboard controls.
+
+Current rules:
+- no anonymous access to Team application tables;
+- admins can see/manage work orders in their organization;
+- contractors can read only work assigned to them;
+- contractors cannot directly update arbitrary work-order columns;
+- contractor field transitions use narrow `start_work` and `complete_field_work` actions;
+- those actions verify authenticated user, organization, role, assignment, and valid state transition;
+- field actions are retry-safe/idempotent for weak-connectivity recovery;
+- contractors can create a `WAITING` photo record only for their own non-cancelled assigned work order.
+
+### Completed and verified
+
+- Team Supabase project created and healthy;
+- initial organization created for In And Out Cleaner Inspections;
+- first `ADMIN` Auth identity created and bound to the organization;
+- first `CONTRACTOR` Auth identity created and bound to the organization;
+- `organizations`, `work_orders`, and `photos` tables created;
+- RLS enabled on all three public tables;
+- explicit table grants installed;
+- disposable `TEST-0001` created and assigned to the contractor;
+- contractor read/admin manage boundary tested successfully;
+- direct contractor work-order update blocked successfully;
+- `start_work` and `complete_field_work` actions created and tested;
+- retrying Start and Complete does not duplicate timestamps or move status backward;
+- unauthorized user action against another user's assignment is blocked;
+- Supabase security/performance advisors checked after DDL changes;
+- RLS auth-claim evaluation warnings corrected;
+- all applied Supabase migrations copied exactly into `supabase/migrations/` in GitHub.
+
+### Still required for the Phase 1 gate
+
+- dashboard/client login using the Admin Auth identity;
+- Android/client login using the Contractor Auth identity;
+- prove each real client receives only the data its role permits.
+
+Gate: one admin and one contractor can sign in through their actual Team clients and see only what their role permits.
 
 ## Phase 2 — Admin dashboard and assignment
 
