@@ -62,7 +62,7 @@ Completed and verified:
 
 Gate: **SATISFIED.** V1 and Team coexist on the same phone as separate Android applications without replacing or disrupting V1.
 
-## Phase 1 — Identity, login, and minimum data model — IN PROGRESS
+## Phase 1 — Identity, login, and minimum data model — COMPLETE
 
 Goal: establish the smallest backend foundation needed by both the dashboard and contractor app.
 
@@ -163,14 +163,15 @@ Current rules:
 - the Android client requested the work-order collection without an `assigned_user_id` client filter, leaving row selection to Supabase RLS;
 - the server returned exactly one visible WO to that contractor: `TEST-0001`;
 - `TEST-0002-ADMIN-ONLY` was not returned to the contractor;
-- the on-device contractor RLS check reported `PASS`.
+- the on-device contractor RLS check reported `PASS`;
+- plain browser Admin gate client built with the project publishable key only and no client-side organization/assignee row filter;
+- cross-organization control `TEST-OTHER-ORG-CONTROL` created specifically to prove the Admin boundary;
+- Admin signed in successfully through the real browser client on the PC/laptop and the client reported an authenticated Admin session;
+- the server returned the two in-organization test WOs to Admin: `TEST-0001` and `TEST-0002-ADMIN-ONLY`;
+- `TEST-OTHER-ORG-CONTROL` was not returned to Admin;
+- the browser Admin RLS check reported `PASS`.
 
-### Still required for the Phase 1 gate
-
-- dashboard/client login using the Admin Auth identity;
-- prove the real admin client receives the organization data allowed to `ADMIN` and that the admin role is enforced by the backend.
-
-Gate: one admin and one contractor can sign in through their actual Team clients and see only what their role permits. **Contractor half satisfied on the real Android client; admin client remains.**
+Gate: **SATISFIED.** One real Admin browser client and one real Contractor Android client can sign in through Supabase Auth and receive only the rows permitted by their server-controlled organization/role authorization.
 
 ## Phase 2 — Admin dashboard and assignment
 
