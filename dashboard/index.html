@@ -11,7 +11,7 @@
     <section class="card" id="login-card">
       <p class="eyebrow">Field Photo Prep Team</p>
       <h1>Admin Login</h1>
-      <p class="muted">Phase 1 permission test. Supabase RLS decides which work orders the browser receives.</p>
+      <p class="muted">Sign in to dispatch Team work orders. Supabase remains the authorization boundary.</p>
       <form id="login-form" autocomplete="on">
         <label>Email
           <input id="email" name="email" type="email" autocomplete="username" required>
@@ -35,7 +35,45 @@
 
       <div id="rls-result" class="check" role="status" aria-live="polite"></div>
 
-      <h2>Work Orders Returned By Server</h2>
+      <section class="admin-action" aria-labelledby="create-heading">
+        <h2 id="create-heading">Create &amp; Assign Test Work Order</h2>
+        <p class="muted">Phase 2 gate: use disposable Team test work only. The assignee list comes from the server after Admin authorization.</p>
+
+        <form id="create-wo-form" class="admin-form" autocomplete="off">
+          <label>External WO number
+            <input id="wo-number" name="wo-number" type="text" required maxlength="160" placeholder="TEST-0003">
+          </label>
+
+          <label>Property address
+            <input id="property-address" name="property-address" type="text" required maxlength="500" placeholder="123 Test Property Rd">
+          </label>
+
+          <div class="form-grid">
+            <label>Work type
+              <input id="work-type" name="work-type" type="text" required maxlength="200" placeholder="Occupancy Inspection">
+            </label>
+
+            <label>Due date
+              <input id="due-date" name="due-date" type="date" required>
+            </label>
+          </div>
+
+          <label>Instructions
+            <textarea id="instructions" name="instructions" rows="4" maxlength="4000" placeholder="Optional field instructions"></textarea>
+          </label>
+
+          <label>Assign to
+            <select id="assignee" name="assignee" required disabled>
+              <option value="">Sign in to load Team users</option>
+            </select>
+          </label>
+
+          <button id="create-wo" type="submit">Create &amp; Assign</button>
+          <p id="create-status" class="status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <h2>Current Work Orders</h2>
       <p class="muted">No organization or assignee filter is sent by this page. Rows below are whatever Supabase RLS allows this Admin session to read.</p>
       <div id="work-orders" class="work-orders"></div>
     </section>
