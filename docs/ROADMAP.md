@@ -155,15 +155,22 @@ Current rules:
 - unauthorized user action against another user's assignment is blocked;
 - Supabase security/performance advisors checked after DDL changes;
 - RLS auth-claim evaluation warnings corrected;
-- all applied Supabase migrations copied exactly into `supabase/migrations/` in GitHub.
+- all applied Supabase migrations copied exactly into `supabase/migrations/` in GitHub;
+- Team Android Phase 1 login client built with the project publishable key only; no service-role/secret key is present in the app;
+- Team Internal test builds now use a stable Team-only test signing identity, separate from V1;
+- disposable `TEST-0002-ADMIN-ONLY` created and assigned to the admin as an exclusion-control row;
+- contractor signed in successfully through the real Team Android app on the real phone and the client reported role `CONTRACTOR`;
+- the Android client requested the work-order collection without an `assigned_user_id` client filter, leaving row selection to Supabase RLS;
+- the server returned exactly one visible WO to that contractor: `TEST-0001`;
+- `TEST-0002-ADMIN-ONLY` was not returned to the contractor;
+- the on-device contractor RLS check reported `PASS`.
 
 ### Still required for the Phase 1 gate
 
 - dashboard/client login using the Admin Auth identity;
-- Android/client login using the Contractor Auth identity;
-- prove each real client receives only the data its role permits.
+- prove the real admin client receives the organization data allowed to `ADMIN` and that the admin role is enforced by the backend.
 
-Gate: one admin and one contractor can sign in through their actual Team clients and see only what their role permits.
+Gate: one admin and one contractor can sign in through their actual Team clients and see only what their role permits. **Contractor half satisfied on the real Android client; admin client remains.**
 
 ## Phase 2 — Admin dashboard and assignment
 
