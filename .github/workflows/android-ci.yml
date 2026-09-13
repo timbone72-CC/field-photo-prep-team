@@ -1,4 +1,4 @@
-name: Android Team Shell CI
+name: Android Team Client CI
 
 on:
   pull_request:
@@ -19,9 +19,21 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.6.0'
+      - name: Reject client secrets and test-account PII
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -n -E 'sb_secret_|service_role' app/src/main; then
+            echo 'Forbidden elevated Supabase credential reference found in Android client source.' >&2
+            exit 1
+          fi
+          if grep -R -n -E 'timbone72@gmail\.com|rushingl27@gmail\.com' app/src/main; then
+            echo 'Test-account email must not be committed to Android client source.' >&2
+            exit 1
+          fi
       - name: Build internal Team APK
         run: gradle :app:assembleDebug
-      - name: Verify Team application ID
+      - name: Verify Team client identity and network permission
         shell: bash
         run: |
           set -euo pipefail
@@ -32,9 +44,11 @@ jobs:
           "${AAPT}" dump badging "${APK}" | tee apk-badging.txt
           grep -q "package: name='com.inandout.fieldphotoprep.team.internal'" apk-badging.txt
           grep -q "application-label:'Field Photo Prep Team Internal'" apk-badging.txt
-      - name: Upload Team shell APK
+          "${AAPT}" dump permissions "${APK}" | tee apk-permissions.txt
+          grep -q "android.permission.INTERNET" apk-permissions.txt
+      - name: Upload Phase 1 login APK
         uses: actions/upload-artifact@v4
         with:
-          name: field-photo-prep-team-internal-shell-apk
+          name: field-photo-prep-team-phase1-login-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

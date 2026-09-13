@@ -10,8 +10,8 @@ android {
         applicationId 'com.inandout.fieldphotoprep.team.internal'
         minSdk 26
         targetSdk 36
-        versionCode 1
-        versionName '0.1-team-shell-internal'
+        versionCode 2
+        versionName '0.2-phase1-login-internal'
     }
 
     buildTypes {
