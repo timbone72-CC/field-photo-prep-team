@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Field Photo Prep Team Internal</string>
+    <string name="shell_status">Independent Team test shell</string>
+    <string name="package_label">Package: %1$s</string>
+</resources>
