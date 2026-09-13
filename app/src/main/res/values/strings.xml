@@ -1,5 +1,14 @@
 <resources>
     <string name="app_name">Field Photo Prep Team Internal</string>
-    <string name="shell_status">Independent Team test shell</string>
-    <string name="package_label">Package: %1$s</string>
+    <string name="phase1_title">Team Contractor Login</string>
+    <string name="phase1_intro">Sign in with your Team account. Work orders are returned by Supabase RLS; the app does not filter assignments locally.</string>
+    <string name="email_hint">Email</string>
+    <string name="password_hint">Password</string>
+    <string name="sign_in">Sign In</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="signed_out">Signed out</string>
+    <string name="signing_in">Signing in…</string>
+    <string name="loading_work">Loading assigned work…</string>
+    <string name="work_orders_heading">Work Orders Returned By Server</string>
+    <string name="no_work_orders">No work orders were returned.</string>
 </resources>
