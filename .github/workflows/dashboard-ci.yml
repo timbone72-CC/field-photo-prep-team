@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - feat/**
+      - fix/**
 
 jobs:
   dashboard:
@@ -15,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Reject secrets, test-account PII, and persistent auth storage
+      - name: Reject secrets, test-account PII, and unsafe auth storage
         shell: bash
         run: |
           set -euo pipefail
@@ -31,8 +32,12 @@ jobs:
             echo 'Test-account UUID must not be committed to dashboard source.' >&2
             exit 1
           fi
-          if grep -R -n 'sessionStorage' dashboard; then
-            echo 'Admin dashboard must not persist auth state in sessionStorage.' >&2
+          if grep -R -n 'sessionStorage' dashboard --exclude='session.js'; then
+            echo 'Auth sessionStorage use is allowed only in the dedicated tab-session helper.' >&2
+            exit 1
+          fi
+          if grep -n 'sessionStorage' dashboard/session.js | grep -v 'ADMIN_SESSION_STORAGE_KEY'; then
+            echo 'Every sessionStorage operation must use the one dedicated Admin session key.' >&2
             exit 1
           fi
           if grep -R -n 'localStorage' dashboard | grep -v 'WO_NUMBER_MODE_STORAGE_KEY'; then
@@ -40,7 +45,19 @@ jobs:
             exit 1
           fi
       - name: Check dashboard JavaScript syntax
-        run: node --check dashboard/app.js
+        run: |
+          node --check dashboard/app.js
+          node --check dashboard/session.js
+      - name: Verify refresh-safe Admin tab session
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'ADMIN_SESSION_STORAGE_KEY' dashboard/session.js
+          grep -q 'restoreAdminSession' dashboard/session.js
+          grep -q 'grant_type=refresh_token' dashboard/session.js
+          grep -q 'refresh_token' dashboard/session.js
+          grep -q 'clearAdminSession' dashboard/session.js
+          grep -q 'session.js?v=' dashboard/index.html
       - name: Verify authorization gate markers
         shell: bash
         run: |
