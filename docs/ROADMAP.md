@@ -1,6 +1,8 @@
 # Field Photo Prep Team — Master Implementation Roadmap
 
-Planning status: **CONSOLIDATED DRAFT FOR FINAL OPERATOR APPROVAL — PHASE 3 RUNTIME WORK IS NOT YET AUTHORIZED**
+Planning status: **APPROVED / CURRENT — runtime work remains phase-gated**
+
+Operator approval recorded: **2026-09-14**.
 
 This is the authoritative product and implementation roadmap for Field Photo Prep Team. It defines the intended user workflow, authority boundaries, offline behavior, photo rules, work-order lifecycle, HNP delivery rules, phase boundaries, failure handling, verification, and real-device gates.
 
@@ -1630,18 +1632,18 @@ Re-read current official documentation when implementing; do not rely on roadmap
 
 ---
 
-# Roadmap approval gate
+# Roadmap approval and runtime gate
 
-This roadmap is a **consolidated draft** until the operator explicitly approves it as current.
+This roadmap was **approved by the operator on 2026-09-14** and is the current authoritative Team product/implementation plan.
 
-No Phase 3 runtime, Room migration, Supabase run migration, WorkManager worker, CameraX Team port, template schema, Edge Function, or Drive API integration is authorized merely because it appears here.
+Roadmap approval does **not** bypass runtime governance. Phase 3 runtime work, Room migration, Supabase run migration, WorkManager workers, CameraX Team work, template schema changes, Edge Functions, and Drive API integration remain subject to the governing change-control/Level-3 rules.
 
-After operator approval:
+Before Phase 3 runtime begins:
 
-1. mark this roadmap approved/current;
-2. finish the compact remaining Phase 2 real-client reassignment/consent smoke if still pending;
-3. reread governance + this roadmap;
-4. create a Level 3 impact/implementation record only where concrete schema/API details are not already sufficiently specified;
+1. finish the compact remaining Phase 2 real-client reassignment/consent smoke if still pending;
+2. reread governance + this roadmap;
+3. obtain the explicit Level-3 runtime authorization required by the governing contracts;
+4. create a Level-3 impact/implementation record only where concrete schema/API details are not already sufficiently specified;
 5. implement Phase 3 in the largest safe automated-testable slices;
 6. stop once at the documented real-device boundary;
 7. record physical evidence once;
