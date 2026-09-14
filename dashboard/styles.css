@@ -69,6 +69,13 @@ textarea {
   color: #1d1d1f;
 }
 
+input[type="radio"],
+input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  margin: 3px 0 0;
+}
+
 textarea { resize: vertical; }
 
 button {
@@ -121,6 +128,31 @@ button.secondary {
 
 .admin-action h2 { margin-top: 0; }
 .admin-form { margin-top: 18px; }
+
+.choice-group {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #d8dbe0;
+  border-radius: 10px;
+}
+
+.choice-group legend {
+  padding: 0 6px;
+  font-weight: 800;
+}
+
+.choice-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 500;
+}
+
+.remember-choice {
+  font-size: 0.95rem;
+}
 
 .form-grid {
   display: grid;
