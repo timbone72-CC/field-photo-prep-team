@@ -1,0 +1,84 @@
+name: Apply roadmap approval marker once
+
+on:
+  push:
+    branches:
+      - docs/full-team-roadmap
+
+permissions:
+  contents: write
+
+jobs:
+  approve-roadmap:
+    if: github.event.head_commit.message == 'chore: apply roadmap approval marker'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/full-team-roadmap
+          fetch-depth: 0
+
+      - name: Mark roadmap approved/current
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('docs/ROADMAP.md')
+          text = path.read_text()
+
+          old_status = 'Planning status: **CONSOLIDATED DRAFT FOR FINAL OPERATOR APPROVAL — PHASE 3 RUNTIME WORK IS NOT YET AUTHORIZED**'
+          new_status = 'Planning status: **APPROVED / CURRENT — runtime work remains phase-gated**\n\nOperator approval recorded: **2026-09-14**.'
+          if old_status not in text:
+              raise SystemExit('expected draft status marker not found')
+          text = text.replace(old_status, new_status, 1)
+
+          old_gate = '''# Roadmap approval gate
+
+          This roadmap is a **consolidated draft** until the operator explicitly approves it as current.
+
+          No Phase 3 runtime, Room migration, Supabase run migration, WorkManager worker, CameraX Team port, template schema, Edge Function, or Drive API integration is authorized merely because it appears here.
+
+          After operator approval:
+
+          1. mark this roadmap approved/current;
+          2. finish the compact remaining Phase 2 real-client reassignment/consent smoke if still pending;
+          3. reread governance + this roadmap;
+          4. create a Level 3 impact/implementation record only where concrete schema/API details are not already sufficiently specified;
+          5. implement Phase 3 in the largest safe automated-testable slices;
+          6. stop once at the documented real-device boundary;
+          7. record physical evidence once;
+          8. continue only when evidence supports the next phase.
+          '''.replace('          ', '')
+
+          new_gate = '''# Roadmap approval and runtime gate
+
+          This roadmap was **approved by the operator on 2026-09-14** and is the current authoritative Team product/implementation plan.
+
+          Roadmap approval does **not** bypass runtime governance. Phase 3 runtime work, Room migration, Supabase run migration, WorkManager workers, CameraX Team work, template schema changes, Edge Functions, and Drive API integration remain subject to the governing change-control/Level-3 rules.
+
+          Before Phase 3 runtime begins:
+
+          1. finish the compact remaining Phase 2 real-client reassignment/consent smoke if still pending;
+          2. reread governance + this roadmap;
+          3. obtain the explicit Level-3 runtime authorization required by the governing contracts;
+          4. create a Level-3 impact/implementation record only where concrete schema/API details are not already sufficiently specified;
+          5. implement Phase 3 in the largest safe automated-testable slices;
+          6. stop once at the documented real-device boundary;
+          7. record physical evidence once;
+          8. continue only when evidence supports the next phase.
+          '''.replace('          ', '')
+
+          if old_gate not in text:
+              raise SystemExit('expected draft approval gate not found')
+          text = text.replace(old_gate, new_gate, 1)
+          path.write_text(text)
+
+      - name: Remove one-time workflow and commit approval
+        shell: bash
+        run: |
+          rm .github/workflows/approve-roadmap-once.yml
+          git config user.name 'timbone72-CC'
+          git config user.email 'timbone72@gmail.com'
+          git add docs/ROADMAP.md .github/workflows/approve-roadmap-once.yml
+          git commit -m 'Record roadmap operator approval'
+          git push origin HEAD:docs/full-team-roadmap
