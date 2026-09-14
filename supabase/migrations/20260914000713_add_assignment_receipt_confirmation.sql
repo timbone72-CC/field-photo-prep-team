@@ -1,5 +1,5 @@
 alter table public.work_orders
-  add column assignment_received_at timestamptz;
+  add column if not exists assignment_received_at timestamptz;
 
 create or replace function private.acknowledge_assignment_received(p_work_order_id uuid)
 returns table (
