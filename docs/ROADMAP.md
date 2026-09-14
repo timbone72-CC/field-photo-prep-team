@@ -2,7 +2,7 @@
 
 Planning status: **DRAFT FOR OPERATOR REVIEW — PHASE 3 RUNTIME WORK IS NOT YET AUTHORIZED**
 
-This is the authoritative product/implementation roadmap for Field Photo Prep Team. It intentionally combines the product path, protected behavior, phase boundaries, failure rules, verification strategy, and physical-device gates in one place so a future work session cannot begin from an incomplete phase description.
+This is the authoritative product/implementation roadmap for Field Photo Prep Team. It combines the product path, protected behavior, phase boundaries, failure rules, verification strategy, and physical-device gates in one place so a future work session cannot begin from an incomplete phase description.
 
 The existing single-user Field Photo Prep (`timbone72-CC/field-photo-prep`) remains separate, working, and read-only to Team development.
 
@@ -70,7 +70,7 @@ These FPP ideas remain, but their implementation changes because Team has multip
 - FPP manual per-device Drive account/provider selection → contractor phone receives no HNP Drive password or reusable privileged storage credential;
 - FPP foreground/manual upload flow → Team may use **WorkManager** for approved persistent network synchronization while preserving the same fail-closed queue rules;
 - FPP current-address/current-work-order local selection → Team assignment comes from Supabase and the cached WO is keyed by immutable Team WO UUID;
-- FPP remote folder discovery by visible name → Team remote objects should be tagged/searchable by Team UUID metadata where the storage API permits it;
+- FPP remote folder discovery by visible name → Team remote objects are resolved by stored Drive ID and/or Team UUID metadata where the Drive API permits it;
 - FPP direct remote provider reconciliation → Team can use a trusted backend/Edge Function plus the Drive API to reconcile remote identity without giving the contractor privileged credentials.
 
 ## Do not carry forward
@@ -80,7 +80,7 @@ The following FPP mechanisms are intentionally **not** Team requirements:
 - contractor selecting the HNP Drive account/folder through Android's system folder picker;
 - SAF persisted tree grants on contractor phones;
 - contractor-side Drive folder discovery/create/reuse/Clear & Reuse;
-- using address text, folder names, WO numbers, or timestamps as permanent Team identity;
+- using address text, folder names, WO numbers, contractor names, or timestamps as permanent Team identity;
 - FPP's file-per-record persistence model when Team now has a demonstrated structured/offline database requirement;
 - external-camera accept/retake workflow that FPP already replaced with its proven CameraX multi-shot workflow;
 - a permanent in-app photo library;
@@ -93,12 +93,12 @@ The following FPP mechanisms are intentionally **not** Team requirements:
 ## Permanent identities
 
 - Organization: UUID.
-- Auth user: Supabase Auth UUID.
+- Auth user/contractor: Supabase Auth UUID.
 - Work order: Team WO UUID.
 - Photo: UUID generated on the phone before capture.
 - Remote Drive folder/file: Drive ID stored separately after creation/resolution.
 
-Display/business fields such as address, WO number, work type, due date, folder name, filename, contractor email, and visible status labels are not permanent identity.
+Display/business fields such as contractor name, address, WO number, work type, due date, folder name, filename, email, and visible status labels are not permanent identity.
 
 ## Authority map
 
@@ -124,7 +124,7 @@ Local pending state must never be displayed as if Supabase already accepted it.
 
 ### Google Drive/HNP remote storage is authoritative for
 
-- whether the final remote photo object actually exists after confirmation;
+- whether the final remote WO folder/photo object actually exists after confirmation;
 - exact confirmed remote folder/file identity.
 
 A local state update or HTTP request by itself cannot prove remote success.
@@ -193,29 +193,136 @@ Exact credential-storage implementation is chosen inside Phase 3, but credential
 
 ---
 
-# Remote HNP archive baseline
+# Remote HNP archive baseline — APPROVED STRUCTURE
 
-The initial storage root remains:
+The initial development storage root remains:
 
 `Field Photo Prep Team - HNP / TEST / Work Orders`
 
-For the first pilot, prefer the leanest stable hierarchy:
+Inside that root, Team organizes photos by the way the field business actually works:
 
-`Work Orders root → one folder per Team WO → photos`
+```text
+Work Orders
+└── Contractor
+    └── Property Address
+        └── Work Order
+            ├── photo
+            ├── photo
+            └── photo
+```
 
-Suggested human-facing WO folder name:
+Example:
 
-`<WO number> - <property address>`
+```text
+Work Orders
+└── Jane Doe
+    └── 1607 Crestview Drive
+        ├── FPP-000123 - Cut Grass
+        │   ├── field-photo-<uuid>.jpg
+        │   └── field-photo-<uuid>.jpg
+        ├── FPP-000156 - Trim Trees
+        │   └── field-photo-<uuid>.jpg
+        └── FPP-000201 - Fix Fence
+            └── field-photo-<uuid>.jpg
+```
 
-The visible folder name is only organization/context. Exact Team WO UUID is stored in Drive app metadata where practical, and the returned Drive folder ID is stored server-side as the remote destination identity.
+There is **no extra `Photos` subfolder** in the first version because a WO folder contains only that WO's photos. If later the WO folder must also contain reports/forms/other artifacts, adding a `Photos` child becomes a separate demonstrated requirement.
 
-Why Team does **not** initially recreate FPP's address-folder layer: Team currently has a WO entity but no permanent Property entity. Inventing a property identity only to reproduce FPP's Drive hierarchy would add a new domain model before the workflow demonstrates a need. If the HNP pilot proves address grouping is operationally necessary, add it deliberately later rather than making address text into identity.
+## Contractor folder
+
+The contractor folder is the top organizational grouping beneath the Team Work Orders root.
+
+- visible folder name uses the contractor's current display name;
+- permanent contractor identity is the Supabase Auth user UUID, not the name;
+- Drive `appProperties` should carry the Team contractor/user UUID where practical;
+- a contractor rename must not create a second identity;
+- do not use contractor email as permanent folder identity.
+
+## Address folder
+
+The address folder groups the WOs normally performed by that contractor at that property.
+
+- address text is organizational/display context, not a new permanent Property entity;
+- Team does not add a `properties` table merely to support this Drive layout;
+- exactly matching/reusable address folders beneath the current contractor may be reused;
+- address corrections may update display organization later, but must never change a Team WO UUID or photo UUID;
+- two contractors may each have an address folder with the same visible address when different WOs at that property are currently assigned to them;
+- Team does not automatically delete empty address folders in the first version.
+
+## Work-order folder
+
+The WO folder is the permanent archive unit that matters.
+
+Suggested human-facing folder name:
+
+`<WO number> - <work type>`
+
+Examples:
+
+- `FPP-000123 - Cut Grass`
+- `FPP-000156 - Trim Trees`
+- `FPP-000201 - Fix Fence`
+
+The visible name is not identity.
+
+- exact Team WO UUID is stored in Drive `appProperties` where practical;
+- exact returned Drive folder ID is stored server-side as that WO's remote archive identity;
+- photos are always created inside that exact stored WO folder;
+- address, work type, WO number, or contractor display-name edits never replace the Team WO UUID;
+- once a Drive folder ID exists, upload/retry uses that stable folder identity instead of rebuilding destination from visible path text.
+
+## Reassignment and Drive movement
+
+Assignment is server-authoritative. The Drive hierarchy follows the **current approved assignment**, but only the affected WO archive moves.
+
+If `FPP-000123 - Cut Grass` moves from Jane to John:
+
+```text
+Before
+Jane Doe
+└── 1607 Crestview Drive
+    ├── FPP-000123 - Cut Grass
+    ├── FPP-000156 - Trim Trees
+    └── FPP-000201 - Fix Fence
+
+After
+Jane Doe
+└── 1607 Crestview Drive
+    ├── FPP-000156 - Trim Trees
+    └── FPP-000201 - Fix Fence
+
+John Smith
+└── 1607 Crestview Drive
+    └── FPP-000123 - Cut Grass
+```
+
+Rules:
+
+1. **Move the existing WO folder as one unit.** Its photos stay inside it.
+2. Keep the same Drive WO folder ID and Team WO UUID.
+3. Do not move the old contractor's whole address folder.
+4. Do not move sibling WOs at the same address.
+5. Reuse or create only the destination contractor/address parent needed for that WO.
+6. Do not copy every photo into a new WO folder merely because assignment changed.
+7. Do not delete the old address folder automatically when it becomes empty.
+8. For an `IN_PROGRESS` handoff, move the archive only after the approved contractor-consent transition actually changes the server assignee.
+9. If the WO has no remote folder yet, no Drive move is required; the first authorized upload resolves/creates the WO folder beneath the current assignee's contractor/address hierarchy.
+10. If a Drive move result is failed/ambiguous, do **not** create a replacement WO folder. Preserve the existing Drive ID/Team WO UUID, surface a storage-placement problem, and reconcile the exact folder before another move/create.
+
+Google Drive parent changes are therefore an **archive-organization operation**, not a change to business identity.
+
+## Photo identity
 
 Photo filename baseline:
 
 `field-photo-<photo UUID>.jpg`
 
-Use Drive app metadata where practical to tag at least the Team photo UUID and Team WO UUID so remote reconciliation does not depend on visible names alone.
+Use Drive `appProperties` where practical to tag at least:
+
+- Team photo UUID;
+- Team WO UUID.
+
+The confirmed Drive file ID becomes the remote photo identity. Remote reconciliation must not depend on the visible filename alone.
 
 Contractor phones never receive the HNP account password, OAuth refresh token, Supabase secret/service credential, or another reusable privileged storage credential.
 
@@ -332,7 +439,7 @@ Reconnect:
 
 Use Room because Team now has a demonstrated need for structured offline data.
 
-Initial local ownership should stay small:
+Initial local ownership should stay small.
 
 ### Cached work order
 
@@ -394,12 +501,10 @@ Improvement over the current prototype:
 - if both are created offline for one WO, synchronization preserves `START → COMPLETE` ordering;
 - repeated worker/app retry must be idempotent;
 - field-event time should represent when the contractor performed the action, not merely when connectivity returned;
-- the narrow server actions may be extended to accept a client event timestamp while still validating authenticated user, organization, current assignment, valid transition, and timestamp ordering/sanity;
+- narrow server actions may be extended to accept a client event timestamp while still validating authenticated user, organization, current assignment, valid transition, and timestamp ordering/sanity;
 - server acceptance remains authoritative.
 
 ## Server refresh / cache reconciliation
-
-When online assignment refresh succeeds:
 
 ### Row still assigned to this user
 
@@ -421,7 +526,7 @@ When online assignment refresh succeeds:
 - do not claim server completion;
 - approved resolution is required before destructive cleanup.
 
-For the first version, the safest resolution is intentionally conservative: Admin can restore/reassign the WO back when the local field work should be accepted; otherwise the local conflict remains protected until a later explicit discard/recovery rule applies. The phone must never guess which side should win.
+For the first version, the safest resolution is conservative: Admin can restore/reassign the WO back when the local field work should be accepted; otherwise the local conflict remains protected until a later explicit discard/recovery rule applies. The phone must never guess which side should win.
 
 ## Cancellation race
 
@@ -438,7 +543,9 @@ On reconnect:
 - server remains authoritative for current assignment;
 - old contractor's queued Start is not forced through;
 - local start evidence remains preserved and becomes conflict;
-- photos, once Phase 4 exists, remain bound to the original Team WO and original capturing user; they are never silently transferred to the new assignee.
+- later photos remain bound to the original Team WO and original capturing user; they are never redirected to a different WO.
+
+For `IN_PROGRESS` handoff after Phase 4 exists, the current contractor app must not knowingly approve reassignment while that device still holds unresolved local field actions or unsynchronized photos for the WO. The app should first synchronize or surface a blocker. This prevents a handoff from deliberately orphaning known local evidence.
 
 ## Session/restart behavior
 
@@ -695,18 +802,52 @@ The backend/Edge Function:
 
 Supabase service/secret credentials and Google OAuth refresh credentials remain server-side secrets only.
 
-## Drive destination creation/resolution
+## Drive hierarchy creation/resolution
 
-Before first photo upload for a WO:
+Before first photo upload for a WO, resolve the hierarchy from stable identity outward:
 
-1. resolve server-stored `remote_folder_id` if already present;
-2. verify it still represents the expected Team WO archive where practical;
-3. if absent, search beneath the configured HNP Work Orders root by Team WO UUID app metadata, not just folder name;
+### Contractor parent
+
+1. identify the server-current assigned contractor UUID;
+2. resolve a stored contractor Drive folder ID when one exists;
+3. otherwise search beneath the configured Team Work Orders root by contractor/user UUID `appProperties`, not contractor name alone;
+4. exactly one match → reuse it;
+5. no match → create the contractor folder using current display name + contractor UUID metadata;
+6. multiple/inconclusive matches → fail closed.
+
+### Address parent under that contractor
+
+1. use the current WO property address as organizational context;
+2. reuse an exact suitable address folder beneath that exact contractor parent when safely resolvable;
+3. otherwise create one beneath that contractor only;
+4. the address folder is not permanent Team identity and does not replace the WO UUID;
+5. ambiguity must fail closed rather than choose a same-named folder under another contractor.
+
+### Work-order folder
+
+1. resolve server-stored WO `remote_folder_id` if already present;
+2. verify it still represents the expected Team WO where practical;
+3. if absent, search within the intended contractor/address parent by Team WO UUID `appProperties`, not just folder name;
 4. exactly one match → reuse it and persist its Drive ID;
-5. no match → create one folder with readable display name plus Team WO UUID app metadata, then persist returned Drive ID;
-6. multiple/inconclusive matches → fail closed; do not guess or create another folder.
+5. no match → create `<WO number> - <work type>` with Team WO UUID metadata, then persist returned Drive ID;
+6. multiple/inconclusive matches → fail closed; do not guess or create another WO folder.
 
-Folder creation retry therefore cannot knowingly create duplicate WO folders after a successful but locally unrecorded create.
+Once `remote_folder_id` exists, it is authoritative archive destination for the WO. Later upload/retry does not reconstruct destination from contractor name/address text.
+
+## Reassignment archive move
+
+When a server-approved reassignment changes the current assignee:
+
+- if the WO has no remote folder yet, no Drive action is required until first authorized upload;
+- if the WO remote folder exists, resolve/reuse the new contractor parent and that contractor's matching address parent;
+- move the **same exact WO Drive folder ID** to the new address parent;
+- do not create a replacement WO folder;
+- keep all existing photos inside the moved folder;
+- do not move sibling WOs or the previous contractor's whole address folder;
+- do not auto-delete an emptied old address folder;
+- if move outcome is ambiguous, preserve the existing WO Drive ID and mark archive placement as unresolved; no duplicate move/create is allowed until reconciliation proves the parent state.
+
+For `IN_PROGRESS` work, this move happens only after the consent transition actually makes the new contractor the server assignee.
 
 ## Photo remote identity
 
@@ -726,7 +867,7 @@ Expected safe flow:
 
 1. local prepared copy exists and hash/byte size are known;
 2. server photo metadata using the phone-generated photo UUID is durably present/authorized;
-3. backend initiates a Drive resumable upload session for the exact WO folder + deterministic filename;
+3. backend initiates a Drive resumable upload session for the exact stored WO folder + deterministic filename;
 4. Android persists the returned resumable-session capability/URI **before sending photo bytes**;
 5. only then transition/retain `UPLOADING` and send bytes;
 6. final Drive response returns/establishes exact remote file identity;
@@ -784,11 +925,11 @@ Carry forward the FPP decision ladder concept, adapted to Drive API/server contr
 
 1. validate exact local photo + WO + prepared bytes/hash evidence;
 2. use any exact resumable/provisional remote evidence first;
-3. search the exact stored WO folder by Team photo UUID/app metadata/deterministic filename;
+3. inspect/search the exact stored WO folder by Team photo UUID/app metadata/deterministic filename;
 4. exactly one candidate → prove it strongly enough (metadata/size/checksum or remote-byte hash when needed) before confirming;
 5. more than one candidate → remain `UNCERTAIN`;
 6. authoritative proof of absence with no unresolved provisional evidence → release to retry-safe `FAILED`;
-7. loading/inaccessible/mismatched/ambiguous evidence → remain `UNCERTAIN`;
+7. inaccessible/mismatched/ambiguous evidence → remain `UNCERTAIN`;
 8. reconciliation never deletes or overwrites remote content merely to make state simpler.
 
 ## Cleanup after success
@@ -805,7 +946,7 @@ After durable local + server `UPLOADED` with confirmed remote Drive ID:
 
 No backend upload session is authorized when the photo/WO is in an unresolved assignment/cancellation conflict.
 
-The photo stays local. Resolving ownership comes before remote archival; remote sync must never silently choose the new assignee or redirect the original photo.
+The photo stays local. Resolving ownership comes before remote archival; remote sync must never silently redirect a photo to another WO.
 
 ## Automated verification
 
@@ -813,8 +954,12 @@ At minimum prove:
 
 - user/role/org/assignment authorization on the upload endpoint;
 - no secret/service/Google refresh credential reaches Android/browser code;
+- contractor folder unique resolution by contractor UUID metadata;
+- address parent is resolved only beneath the exact contractor parent;
 - WO folder unique resolution/create by Team WO UUID metadata;
-- ambiguous duplicate folder result fails closed;
+- ambiguous duplicate hierarchy result fails closed;
+- server-approved reassignment moves only the exact existing WO folder ID and preserves its contents;
+- ambiguous move cannot create a replacement WO folder;
 - deterministic photo filename/app metadata;
 - resumable session persisted before byte transfer;
 - process restart retains session and exact destination;
@@ -835,22 +980,25 @@ Use only disposable Team WO/photo data under the HNP TEST root.
 
 Prove:
 
-1. capture several photos offline from Phase 4;
-2. restore weak/normal connectivity;
-3. verify server creates/resolves one exact WO folder;
-4. verify several photos reach that exact folder sequentially;
-5. kill/restart app during queued work and prove queue resumes;
-6. perform one safe controlled network interruption of an upload;
-7. prove the app resumes/reconciles rather than blindly duplicating;
-8. verify final Drive file IDs are retained and local state reaches `UPLOADED` only after confirmation;
-9. verify local cleanup removes unneeded image bytes while Drive copies remain;
-10. verify unrelated HNP TEST content is untouched.
+1. create/resolve a contractor folder;
+2. create/reuse one address folder beneath that contractor;
+3. create/resolve one exact WO folder beneath that address;
+4. capture several photos offline from Phase 4;
+5. restore weak/normal connectivity;
+6. verify several photos reach that exact WO folder sequentially;
+7. kill/restart app during queued work and prove queue resumes;
+8. perform one safe controlled network interruption of an upload;
+9. prove the app resumes/reconciles rather than blindly duplicating;
+10. verify final Drive file IDs are retained and local state reaches `UPLOADED` only after confirmation;
+11. verify local cleanup removes unneeded image bytes while Drive copies remain;
+12. reassign one disposable WO and prove only that same WO folder moves under the new contractor's matching address parent while sibling WOs stay put;
+13. verify unrelated HNP TEST content is untouched.
 
 Do not manufacture a dangerous ambiguous remote create merely to satisfy a test. If a true ambiguity cannot be induced safely, automated reconciliation tests plus the safest provider interruption evidence are accepted and the limitation is recorded.
 
 ## Completion gate
 
-**Phase 5 is complete when offline-captured photos survive interruption/restart, synchronize through the server to the exact HNP TEST WO folder without reusable Drive credentials on the contractor phone, and no tested failure path loses evidence or knowingly creates duplicates.**
+**Phase 5 is complete when offline-captured photos survive interruption/restart, synchronize through the server to the exact contractor → address → WO HNP TEST archive without reusable Drive credentials on the contractor phone, and reassignment can move only the affected WO archive without lost photos, wrong placement, or blind duplicates.**
 
 ---
 
@@ -876,6 +1024,7 @@ At minimum show:
 - failed count;
 - uncertain/problem count;
 - unresolved assignment/offline conflict when one has been reported;
+- archive-placement problem when a Drive reassignment/move is unresolved;
 - pending in-progress reassignment request where applicable.
 
 ## Truthfulness rule
@@ -897,7 +1046,7 @@ Use derived filters/presentation rather than more durable WO statuses:
 - In progress;
 - Field complete — photos pending;
 - Complete — field complete and all known required photos confirmed uploaded;
-- Problem — failed/uncertain/conflict requiring attention.
+- Problem — failed/uncertain/conflict/archive-placement issue requiring attention.
 
 ## Conflict reporting
 
@@ -912,13 +1061,14 @@ The exact schema may be a narrow WO conflict/status record rather than a general
 Phase 6 may add only the minimum resolution actions demonstrated by the conflict model, for example:
 
 - restore/reassign the WO to the contractor whose protected offline work should be accepted;
+- retry/reconcile an archive-placement move after the exact existing Drive WO folder identity is known;
 - clear a resolved conflict only after server/local sync proves it no longer protects unsynchronized evidence.
 
 Do not build a generic case-management system.
 
 ## Automated verification
 
-Prove derived counts/views from underlying server facts; organization/RLS isolation; no cross-contractor leakage; field-complete does not imply uploaded; uncertain/failed/conflict cannot render as complete; counts remain stable under retries/idempotent updates.
+Prove derived counts/views from underlying server facts; organization/RLS isolation; no cross-contractor leakage; field-complete does not imply uploaded; uncertain/failed/conflict/archive-placement problem cannot render as complete; counts remain stable under retries/idempotent updates.
 
 ## End-to-end gate
 
@@ -955,6 +1105,8 @@ Use Team repeatedly in realistic conditions before HNP receives a production pil
 
 Across repeated runs, exercise:
 
+- multiple WOs at the same address for one contractor;
+- different WOs at one address such as grass, trees, fence, inspection;
 - multiple WOs on one contractor phone;
 - due dates/instructions edits;
 - receipt;
@@ -968,7 +1120,9 @@ Across repeated runs, exercise:
 - lost connectivity during queued sync;
 - later recovery on cellular/Wi-Fi;
 - reassignment while untouched;
+- approved in-progress handoff;
 - reassignment/cancellation race with locally started work;
+- Drive archive move of exactly one reassigned WO while sibling WOs remain in the prior contractor's address folder;
 - auth/session refresh and one intentional signout/signin;
 - low-storage behavior if it can be tested safely;
 - app update over an existing Team install without losing protected local state;
@@ -982,7 +1136,7 @@ The pilot is not considered stable if routine use requires:
 - SQL/manual row repairs;
 - deleting app data to recover;
 - reinstalling to clear queues;
-- manually moving misfiled Drive photos;
+- manually moving misfiled Drive photos/WOs;
 - repeated retry until an uncertain upload happens to work;
 - using FPP V1 as a fallback for Team data.
 
@@ -998,7 +1152,7 @@ Before leaving Phase 7, run one proportional architecture review like FPP's lean
 
 ## Completion gate
 
-**Phase 7 is complete after repeated internal routes/field sessions succeed without lost/misattributed work, duplicate remote photos, manual database repair, or V1 fallback, and remaining issues are understood rather than intermittent mysteries.**
+**Phase 7 is complete after repeated internal routes/field sessions succeed without lost/misattributed work, duplicate remote photos/WOs, manual database repair, or V1 fallback, and remaining issues are understood rather than intermittent mysteries.**
 
 ---
 
@@ -1017,6 +1171,7 @@ Before HNP field use:
 - deliberate versionCode/versionName update policy;
 - production Supabase environment/project separated from disposable development data if practical for the pilot;
 - HNP production Drive root separated from `TEST`;
+- production archive follows the approved contractor → address → WO hierarchy;
 - production secrets configured server-side only;
 - no test account IDs/PII baked into client source;
 - known-good rollback APK/build identity documented.
@@ -1039,6 +1194,8 @@ A full self-service organization/user-management product is not required for the
 Before outside use, write the operational answer for:
 
 - who owns the HNP photo archive;
+- contractor-folder naming/renaming responsibility;
+- how empty address folders are handled (initially leave them alone rather than destructive auto-cleanup);
 - how long confirmed local photos remain before cleanup (normally only until confirmed remote success/bookkeeping);
 - how long server metadata is retained;
 - what happens if the dedicated HNP Google account loses access/quota;
@@ -1067,7 +1224,7 @@ On a separate supported Android phone/account:
 - restart;
 - restore connectivity and synchronize;
 - verify Admin dashboard truth;
-- verify exact HNP archive placement;
+- verify exact contractor → address → WO HNP archive placement;
 - confirm nothing depends on the first developer phone's local IDs/session/storage.
 
 ## Small HNP pilot
@@ -1080,6 +1237,7 @@ Collect only evidence that answers:
 - is offline behavior trustworthy;
 - is camera workflow fast enough;
 - are photos reliably archived;
+- is contractor/address/WO organization useful to the office;
 - can Admin tell what is finished/pending/problematic;
 - are account/update/storage operations manageable.
 
@@ -1108,6 +1266,8 @@ Keep out unless real pilot evidence changes the roadmap:
 - advanced analytics/report builder;
 - permanent local photo gallery;
 - multiple storage-provider abstraction before a second provider is actually needed;
+- permanent Property entity/table solely to organize Drive folders;
+- automatic deletion of empty contractor/address folders;
 - property-preservation job management beyond the dispatch/photo workflow;
 - extra roles without demonstrated need;
 - a generalized event-sourcing architecture;
@@ -1123,7 +1283,7 @@ Do not rely on this roadmap's memory of external APIs; re-read current official 
 - Android offline-first data layer guidance: local writes, queues, conflict resolution, network source of truth.
 - Android WorkManager: persistent constrained/retryable work.
 - Android CameraX: lifecycle-aware preview/image capture and device-specific capability handling.
-- Google Drive API: folders/parents, custom `appProperties`, search, resumable uploads, interrupted-upload status/resume.
+- Google Drive API: folder parents/moves, custom `appProperties`, search, resumable uploads, interrupted-upload status/resume.
 - Supabase: current RLS/Auth/JWT behavior, Edge Function authenticated-user patterns, Edge Function secrets, current API-key model.
 
 ---
