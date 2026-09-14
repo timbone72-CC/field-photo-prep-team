@@ -42,16 +42,13 @@ final class SupabaseApi {
         final String dueDate;
         final String fieldStatus;
         final String assignedUserId;
+        final String pendingAssigneeUserId;
+        final String reassignmentRequestedAt;
+        final String assignmentReceivedAt;
 
-        WorkOrder(
-                String id,
-                String woNumber,
-                String propertyAddress,
-                String workType,
-                String instructions,
-                String dueDate,
-                String fieldStatus,
-                String assignedUserId) {
+        WorkOrder(String id, String woNumber, String propertyAddress, String workType,
+                  String instructions, String dueDate, String fieldStatus, String assignedUserId,
+                  String pendingAssigneeUserId, String reassignmentRequestedAt, String assignmentReceivedAt) {
             this.id = id;
             this.woNumber = woNumber;
             this.propertyAddress = propertyAddress;
@@ -60,6 +57,9 @@ final class SupabaseApi {
             this.dueDate = dueDate;
             this.fieldStatus = fieldStatus;
             this.assignedUserId = assignedUserId;
+            this.pendingAssigneeUserId = pendingAssigneeUserId;
+            this.reassignmentRequestedAt = reassignmentRequestedAt;
+            this.assignmentReceivedAt = assignmentReceivedAt;
         }
     }
 
@@ -77,7 +77,6 @@ final class SupabaseApi {
         request.put("password", password);
         byte[] payload = request.toString().getBytes(StandardCharsets.UTF_8);
         connection.setFixedLengthStreamingMode(payload.length);
-
         try (OutputStream output = connection.getOutputStream()) {
             output.write(payload);
         }
@@ -85,7 +84,6 @@ final class SupabaseApi {
         int status = connection.getResponseCode();
         String body = readBody(connection, status);
         connection.disconnect();
-
         if (status < 200 || status >= 300) {
             throw new ApiException(extractErrorMessage(status, body));
         }
@@ -97,25 +95,21 @@ final class SupabaseApi {
         String signedInEmail = user.optString("email", email);
         JSONObject appMetadata = user.optJSONObject("app_metadata");
         String role = appMetadata == null ? "" : appMetadata.optString("role", "");
-
         return new AuthSession(accessToken, userId, signedInEmail, role);
     }
 
     List<WorkOrder> fetchWorkOrders(String accessToken) throws IOException, JSONException, ApiException {
         String query = "/rest/v1/work_orders"
-                + "?select=id,wo_number,property_address,work_type,instructions,due_date,field_status,assigned_user_id"
+                + "?select=id,wo_number,property_address,work_type,instructions,due_date,field_status,assigned_user_id,pending_assignee_user_id,reassignment_requested_at,assignment_received_at"
                 + "&order=due_date.asc,wo_number.asc";
         URL url = new URL(SupabaseConfig.PROJECT_URL + query);
         HttpURLConnection connection = open(url);
         connection.setRequestMethod("GET");
-        connection.setRequestProperty("apikey", SupabaseConfig.PUBLISHABLE_KEY);
-        connection.setRequestProperty("Authorization", "Bearer " + accessToken);
-        connection.setRequestProperty("Accept", "application/json");
+        addAuthHeaders(connection, accessToken);
 
         int status = connection.getResponseCode();
         String body = readBody(connection, status);
         connection.disconnect();
-
         if (status < 200 || status >= 300) {
             throw new ApiException(extractErrorMessage(status, body));
         }
@@ -129,12 +123,62 @@ final class SupabaseApi {
                     row.optString("wo_number", ""),
                     row.optString("property_address", ""),
                     row.optString("work_type", ""),
-                    row.isNull("instructions") ? "" : row.optString("instructions", ""),
+                    nullableString(row, "instructions"),
                     row.optString("due_date", ""),
                     row.optString("field_status", ""),
-                    row.isNull("assigned_user_id") ? "" : row.optString("assigned_user_id", "")));
+                    nullableString(row, "assigned_user_id"),
+                    nullableString(row, "pending_assignee_user_id"),
+                    nullableString(row, "reassignment_requested_at"),
+                    nullableString(row, "assignment_received_at")));
         }
         return workOrders;
+    }
+
+    void acknowledgeAssignmentReceived(String accessToken, String workOrderId)
+            throws IOException, JSONException, ApiException {
+        JSONObject request = new JSONObject();
+        request.put("p_work_order_id", workOrderId);
+        postRpc(accessToken, "acknowledge_assignment_received", request);
+    }
+
+    void respondReassignment(String accessToken, String workOrderId, boolean accept)
+            throws IOException, JSONException, ApiException {
+        JSONObject request = new JSONObject();
+        request.put("p_work_order_id", workOrderId);
+        request.put("p_accept", accept);
+        postRpc(accessToken, "respond_reassignment", request);
+    }
+
+    private void postRpc(String accessToken, String functionName, JSONObject request)
+            throws IOException, ApiException {
+        URL url = new URL(SupabaseConfig.PROJECT_URL + "/rest/v1/rpc/" + functionName);
+        HttpURLConnection connection = open(url);
+        connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
+        addAuthHeaders(connection, accessToken);
+        connection.setRequestProperty("Content-Type", "application/json");
+        byte[] payload = request.toString().getBytes(StandardCharsets.UTF_8);
+        connection.setFixedLengthStreamingMode(payload.length);
+        try (OutputStream output = connection.getOutputStream()) {
+            output.write(payload);
+        }
+
+        int status = connection.getResponseCode();
+        String body = readBody(connection, status);
+        connection.disconnect();
+        if (status < 200 || status >= 300) {
+            throw new ApiException(extractErrorMessage(status, body));
+        }
+    }
+
+    private static void addAuthHeaders(HttpURLConnection connection, String accessToken) {
+        connection.setRequestProperty("apikey", SupabaseConfig.PUBLISHABLE_KEY);
+        connection.setRequestProperty("Authorization", "Bearer " + accessToken);
+        connection.setRequestProperty("Accept", "application/json");
+    }
+
+    private static String nullableString(JSONObject row, String key) {
+        return row.isNull(key) ? "" : row.optString(key, "");
     }
 
     private static HttpURLConnection open(URL url) throws IOException {
@@ -146,16 +190,12 @@ final class SupabaseApi {
     }
 
     private static String readBody(HttpURLConnection connection, int status) throws IOException {
-        InputStream stream = status >= 200 && status < 400
-                ? connection.getInputStream()
-                : connection.getErrorStream();
+        InputStream stream = status >= 200 && status < 400 ? connection.getInputStream() : connection.getErrorStream();
         if (stream == null) {
             return "";
         }
-
         StringBuilder result = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 result.append(line);
