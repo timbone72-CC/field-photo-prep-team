@@ -31,8 +31,12 @@ jobs:
             echo 'Test-account UUID must not be committed to dashboard source.' >&2
             exit 1
           fi
-          if grep -R -n -E 'localStorage|sessionStorage' dashboard; then
-            echo 'Admin dashboard must keep auth state in memory only.' >&2
+          if grep -R -n 'sessionStorage' dashboard; then
+            echo 'Admin dashboard must not persist auth state in sessionStorage.' >&2
+            exit 1
+          fi
+          if grep -R -n 'localStorage' dashboard | grep -v 'WO_NUMBER_MODE_STORAGE_KEY'; then
+            echo 'localStorage is allowed only for the non-sensitive WO-number mode preference.' >&2
             exit 1
           fi
       - name: Check dashboard JavaScript syntax
@@ -49,15 +53,28 @@ jobs:
             echo 'Dashboard work-order read request must not use client-side authorization filters.' >&2
             exit 1
           fi
-      - name: Verify Phase 2 create and assignment path
+      - name: Verify Phase 2 dispatch edit receipt and numbering paths
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'admin_list_assignable_users' dashboard/app.js
           grep -q 'admin_create_work_order' dashboard/app.js
+          grep -q 'admin_update_work_order' dashboard/app.js
+          grep -q 'p_generate_wo_number' dashboard/app.js
+          grep -q 'assignment_received_at' dashboard/app.js
+          grep -q 'pending_assignee_user_id' dashboard/app.js
+          grep -q 'WO_NUMBER_MODE_STORAGE_KEY' dashboard/app.js
+          grep -q 'id="wo-number-mode-auto"' dashboard/index.html
+          grep -q 'id="wo-number-mode-custom"' dashboard/index.html
+          grep -q 'id="remember-wo-number-mode"' dashboard/index.html
           grep -q 'id="create-wo-form"' dashboard/index.html
+          grep -q 'id="edit-wo-form"' dashboard/index.html
           grep -q 'id="assignee"' dashboard/index.html
-          grep -q 'Create &amp; Assign' dashboard/index.html
+          grep -q 'id="edit-assignee"' dashboard/index.html
+          if grep -n "method: 'PATCH'" dashboard/app.js; then
+            echo 'Dashboard must not directly PATCH work_orders; use narrow RPCs.' >&2
+            exit 1
+          fi
       - name: Upload admin dashboard
         uses: actions/upload-artifact@v4
         with:

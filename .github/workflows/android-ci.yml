@@ -32,6 +32,15 @@ jobs:
             echo 'Test-account email must not be committed to Android client source.' >&2
             exit 1
           fi
+      - name: Verify contractor receipt and reassignment consent paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'acknowledge_assignment_received' app/src/main/java/com/inandout/fieldphotoprep/team/internal/SupabaseApi.java
+          grep -q 'respond_reassignment' app/src/main/java/com/inandout/fieldphotoprep/team/internal/SupabaseApi.java
+          grep -q 'Approve Reassignment' app/src/main/java/com/inandout/fieldphotoprep/team/internal/MainActivity.java
+          grep -q 'Decline Reassignment' app/src/main/java/com/inandout/fieldphotoprep/team/internal/MainActivity.java
+          grep -q 'Assignment receipt: Confirmed' app/src/main/java/com/inandout/fieldphotoprep/team/internal/MainActivity.java
       - name: Build internal Team APK
         run: gradle :app:assembleDebug
       - name: Verify Team client identity and network permission
@@ -73,9 +82,9 @@ jobs:
           if actual != expected:
               sys.exit(1)
           PY
-      - name: Upload Phase 1 login APK
+      - name: Upload Phase 2 contractor APK
         uses: actions/upload-artifact@v4
         with:
-          name: field-photo-prep-team-phase1-login-apk
+          name: field-photo-prep-team-phase2-consent-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

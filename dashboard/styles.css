@@ -69,6 +69,13 @@ textarea {
   color: #1d1d1f;
 }
 
+input[type="radio"],
+input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  margin: 3px 0 0;
+}
+
 textarea { resize: vertical; }
 
 button {
@@ -122,6 +129,31 @@ button.secondary {
 .admin-action h2 { margin-top: 0; }
 .admin-form { margin-top: 18px; }
 
+.choice-group {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #d8dbe0;
+  border-radius: 10px;
+}
+
+.choice-group legend {
+  padding: 0 6px;
+  font-weight: 800;
+}
+
+.choice-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 500;
+}
+
+.remember-choice {
+  font-size: 0.95rem;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -142,10 +174,40 @@ button.secondary {
 .work-order h3 { margin-bottom: 8px; }
 .work-order p { margin: 5px 0; }
 
+.work-order-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.receipt,
+.handoff {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.receipt.received {
+  background: #e9f7ee;
+  border: 1px solid #8bc49e;
+}
+
+.receipt.waiting,
+.handoff.pending {
+  background: #fff7df;
+  border: 1px solid #d9bb68;
+}
+
+.edit-actions { align-items: stretch; }
+.edit-actions button { flex: 1; }
+
 @media (max-width: 620px) {
   .shell { margin: 20px auto; }
   .card { padding: 20px; }
   .row { display: block; }
   .secondary { width: 100%; margin-top: 12px; }
   .form-grid { grid-template-columns: 1fr; }
+  .work-order-actions { display: block; }
+  .work-order-actions button { width: 100%; }
+  .edit-actions button { width: 100%; }
 }
