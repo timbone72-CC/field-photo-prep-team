@@ -37,6 +37,7 @@ public final class MainActivity extends Activity {
     private TextView rlsText;
     private TextView workOrdersHeading;
     private LinearLayout workOrdersContainer;
+    private SupabaseApi.AuthSession currentSession;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -141,22 +142,31 @@ public final class MainActivity extends Activity {
                 SupabaseApi.AuthSession session = api.signIn(email, password);
                 postStatus(getString(R.string.loading_work));
                 List<SupabaseApi.WorkOrder> workOrders = api.fetchWorkOrders(session.accessToken);
-                mainHandler.post(() -> showSignedIn(session, workOrders));
-            } catch (Exception error) {
-                String message = error.getMessage();
-                if (message == null || message.trim().isEmpty()) {
-                    message = "Sign-in failed.";
+
+                if ("CONTRACTOR".equals(session.role)) {
+                    for (SupabaseApi.WorkOrder workOrder : workOrders) {
+                        if (session.userId.equals(workOrder.assignedUserId)
+                                && !"CANCELLED".equals(workOrder.fieldStatus)) {
+                            api.acknowledgeAssignmentReceived(session.accessToken, workOrder.id);
+                        }
+                    }
+                    workOrders = api.fetchWorkOrders(session.accessToken);
                 }
-                String finalMessage = message;
+
+                List<SupabaseApi.WorkOrder> finalWorkOrders = workOrders;
+                mainHandler.post(() -> showSignedIn(session, finalWorkOrders));
+            } catch (Exception error) {
+                String message = safeMessage(error, "Sign-in failed.");
                 mainHandler.post(() -> {
                     passwordInput.setText("");
-                    setLoading(false, finalMessage);
+                    setLoading(false, message);
                 });
             }
         });
     }
 
     private void showSignedIn(SupabaseApi.AuthSession session, List<SupabaseApi.WorkOrder> workOrders) {
+        currentSession = session;
         setLoading(false, "Signed in successfully.");
         passwordInput.setText("");
         emailInput.setVisibility(View.GONE);
@@ -169,7 +179,11 @@ public final class MainActivity extends Activity {
         workOrdersContainer.setVisibility(View.VISIBLE);
 
         identityText.setText("Account: " + session.email + "\nRole: " + session.role);
+        updateRlsProof(session, workOrders);
+        renderWorkOrders(workOrders);
+    }
 
+    private void updateRlsProof(SupabaseApi.AuthSession session, List<SupabaseApi.WorkOrder> workOrders) {
         boolean foreignAssignmentReturned = false;
         boolean controlReturned = false;
         for (SupabaseApi.WorkOrder workOrder : workOrders) {
@@ -188,15 +202,15 @@ public final class MainActivity extends Activity {
             rlsText.setText("RLS CHECK: PASS\n"
                     + "Server returned " + workOrders.size() + " work order(s), all assigned to this account. "
                     + "The admin-only control WO was not returned. No client-side assignment filter was used.");
+        } else if ("CONTRACTOR".equals(session.role) && workOrders.isEmpty()) {
+            rlsText.setText("RLS CHECK: PASS\nNo work orders are currently assigned to this contractor account.");
         } else if ("CONTRACTOR".equals(session.role)) {
             rlsText.setText("RLS CHECK: NEEDS REVIEW\n"
-                    + "The contractor response was empty or contained a row that should not have been returned.");
+                    + "The contractor response contained a row that should not have been returned.");
         } else {
             rlsText.setText("Signed in as " + session.role
                     + ". Contractor-only RLS proof is evaluated when a CONTRACTOR account signs in.");
         }
-
-        renderWorkOrders(workOrders);
     }
 
     private void renderWorkOrders(List<SupabaseApi.WorkOrder> workOrders) {
@@ -214,21 +228,85 @@ public final class MainActivity extends Activity {
             cardParams.bottomMargin = dp(10);
             card.setLayoutParams(cardParams);
 
-            TextView number = text(workOrder.woNumber, 18, true);
-            card.addView(number);
+            card.addView(text(workOrder.woNumber, 18, true));
             card.addView(text(workOrder.propertyAddress, 16, false));
             card.addView(text("Work type: " + workOrder.workType, 14, false));
             card.addView(text("Due: " + workOrder.dueDate, 14, false));
             card.addView(text("Field status: " + workOrder.fieldStatus, 14, false));
+            card.addView(text(
+                    workOrder.assignmentReceivedAt.isEmpty()
+                            ? "Assignment receipt: Pending"
+                            : "Assignment receipt: Confirmed",
+                    14,
+                    !workOrder.assignmentReceivedAt.isEmpty()));
+
             if (!workOrder.instructions.isEmpty()) {
                 card.addView(text("Instructions: " + workOrder.instructions, 14, false));
+            }
+
+            if (currentSession != null
+                    && currentSession.userId.equals(workOrder.assignedUserId)
+                    && "IN_PROGRESS".equals(workOrder.fieldStatus)
+                    && !workOrder.pendingAssigneeUserId.isEmpty()) {
+                TextView request = text(
+                        "Admin requested that this in-progress WO be reassigned. Approve the handoff if you need to release it, or decline to keep the assignment.",
+                        14,
+                        true);
+                request.setPadding(0, dp(12), 0, dp(8));
+                card.addView(request);
+
+                Button approve = new Button(this);
+                approve.setText("Approve Reassignment");
+                approve.setOnClickListener(v -> respondToReassignment(workOrder.id, true));
+                approve.setLayoutParams(matchWrap());
+                card.addView(approve);
+
+                Button decline = new Button(this);
+                decline.setText("Decline Reassignment");
+                decline.setOnClickListener(v -> respondToReassignment(workOrder.id, false));
+                LinearLayout.LayoutParams declineParams = matchWrap();
+                declineParams.topMargin = dp(6);
+                decline.setLayoutParams(declineParams);
+                card.addView(decline);
             }
 
             workOrdersContainer.addView(card);
         }
     }
 
+    private void respondToReassignment(String workOrderId, boolean accept) {
+        SupabaseApi.AuthSession session = currentSession;
+        if (session == null) {
+            statusText.setText("Sign in again before responding to reassignment.");
+            return;
+        }
+
+        progress.setVisibility(View.VISIBLE);
+        statusText.setText(accept ? "Approving reassignment…" : "Declining reassignment…");
+        executor.execute(() -> {
+            try {
+                api.respondReassignment(session.accessToken, workOrderId, accept);
+                List<SupabaseApi.WorkOrder> workOrders = api.fetchWorkOrders(session.accessToken);
+                mainHandler.post(() -> {
+                    progress.setVisibility(View.GONE);
+                    updateRlsProof(session, workOrders);
+                    renderWorkOrders(workOrders);
+                    statusText.setText(accept
+                            ? "Reassignment approved. This WO has been released to the new assignee."
+                            : "Reassignment declined. This WO remains assigned to you.");
+                });
+            } catch (Exception error) {
+                String message = safeMessage(error, "Unable to respond to reassignment.");
+                mainHandler.post(() -> {
+                    progress.setVisibility(View.GONE);
+                    statusText.setText(message);
+                });
+            }
+        });
+    }
+
     private void showSignedOut() {
+        currentSession = null;
         passwordInput.setText("");
         emailInput.setVisibility(View.VISIBLE);
         passwordInput.setVisibility(View.VISIBLE);
@@ -256,6 +334,11 @@ public final class MainActivity extends Activity {
 
     private void postStatus(String message) {
         mainHandler.post(() -> statusText.setText(message));
+    }
+
+    private String safeMessage(Exception error, String fallback) {
+        String message = error.getMessage();
+        return message == null || message.trim().isEmpty() ? fallback : message;
     }
 
     private TextView text(String value, float sizeSp, boolean bold) {
