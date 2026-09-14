@@ -1,5 +1,6 @@
 const SUPABASE_URL = 'https://vyocaujuwrivoqynvitm.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_UPmj_Y10-mLwJo7soekCpg_BYZ08LNZ';
+const WO_NUMBER_MODE_STORAGE_KEY = 'fppTeamAdmin.woNumberMode';
 
 let accessToken = null;
 let currentUser = null;
@@ -21,6 +22,9 @@ const createForm = document.getElementById('create-wo-form');
 const createButton = document.getElementById('create-wo');
 const createStatus = document.getElementById('create-status');
 const woNumberInput = document.getElementById('wo-number');
+const woNumberModeInputs = Array.from(document.querySelectorAll('input[name="wo-number-mode"]'));
+const customWoNumberField = document.getElementById('custom-wo-number-field');
+const rememberWoNumberMode = document.getElementById('remember-wo-number-mode');
 const propertyAddressInput = document.getElementById('property-address');
 const workTypeInput = document.getElementById('work-type');
 const instructionsInput = document.getElementById('instructions');
@@ -40,6 +44,16 @@ const editReassignNote = document.getElementById('edit-reassign-note');
 const saveEditButton = document.getElementById('save-edit');
 const cancelEditButton = document.getElementById('cancel-edit');
 const editStatus = document.getElementById('edit-status');
+
+for (const input of woNumberModeInputs) {
+  input.addEventListener('change', () => {
+    applyWoNumberMode(currentWoNumberMode());
+    persistWoNumberModePreference();
+  });
+}
+
+rememberWoNumberMode.addEventListener('change', persistWoNumberModePreference);
+restoreWoNumberModePreference();
 
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -82,9 +96,13 @@ createForm.addEventListener('submit', async (event) => {
   setCreateStatus('Creating work order…', false);
   createButton.disabled = true;
 
+  const mode = currentWoNumberMode();
+  const rememberMode = rememberWoNumberMode.checked;
+
   try {
     const createdRows = await createWorkOrder({
-      woNumber: woNumberInput.value.trim(),
+      generateWoNumber: mode === 'auto',
+      woNumber: mode === 'custom' ? woNumberInput.value.trim() : null,
       propertyAddress: propertyAddressInput.value.trim(),
       workType: workTypeInput.value.trim(),
       instructions: instructionsInput.value.trim(),
@@ -99,6 +117,9 @@ createForm.addEventListener('submit', async (event) => {
 
     setCreateStatus(`Created and assigned ${created.wo_number}. Waiting for contractor receipt.`, false);
     createForm.reset();
+    rememberWoNumberMode.checked = rememberMode;
+    applyWoNumberMode(mode);
+    persistWoNumberModePreference();
     fillAssigneeSelect(assigneeSelect, assignableUsers, 'Choose Team user');
     await refreshWorkOrders();
   } catch (error) {
@@ -154,6 +175,7 @@ signOutButton.addEventListener('click', () => {
   rlsResult.textContent = '';
   accountHeading.textContent = 'Signed in';
   createForm.reset();
+  restoreWoNumberModePreference();
   fillAssigneeSelect(assigneeSelect, [], 'Sign in to load Team users');
   assigneeSelect.disabled = true;
   createStatus.textContent = '';
@@ -239,12 +261,13 @@ async function fetchAssignableUsers() {
   return response.json();
 }
 
-async function createWorkOrder({ woNumber, propertyAddress, workType, instructions, dueDate, assignedUserId }) {
+async function createWorkOrder({ generateWoNumber, woNumber, propertyAddress, workType, instructions, dueDate, assignedUserId }) {
   requireAccessToken();
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_create_work_order`, {
     method: 'POST',
     headers: authHeaders(true),
     body: JSON.stringify({
+      p_generate_wo_number: generateWoNumber,
       p_wo_number: woNumber,
       p_property_address: propertyAddress,
       p_work_type: workType,
@@ -460,6 +483,52 @@ function closeEditor() {
   editReassignNote.textContent = '';
   editStatus.textContent = '';
   editSection.classList.add('hidden');
+}
+
+function currentWoNumberMode() {
+  const selected = woNumberModeInputs.find((input) => input.checked);
+  return selected ? selected.value : 'auto';
+}
+
+function applyWoNumberMode(mode) {
+  const normalized = mode === 'custom' ? 'custom' : 'auto';
+  for (const input of woNumberModeInputs) {
+    input.checked = input.value === normalized;
+  }
+
+  const custom = normalized === 'custom';
+  customWoNumberField.classList.toggle('hidden', !custom);
+  woNumberInput.disabled = !custom;
+  woNumberInput.required = custom;
+}
+
+function restoreWoNumberModePreference() {
+  let saved = null;
+  try {
+    saved = localStorage.getItem(WO_NUMBER_MODE_STORAGE_KEY);
+  } catch {
+    saved = null;
+  }
+
+  if (saved === 'auto' || saved === 'custom') {
+    rememberWoNumberMode.checked = true;
+    applyWoNumberMode(saved);
+  } else {
+    rememberWoNumberMode.checked = false;
+    applyWoNumberMode('auto');
+  }
+}
+
+function persistWoNumberModePreference() {
+  try {
+    if (rememberWoNumberMode.checked) {
+      localStorage.setItem(WO_NUMBER_MODE_STORAGE_KEY, currentWoNumberMode());
+    } else {
+      localStorage.removeItem(WO_NUMBER_MODE_STORAGE_KEY);
+    }
+  } catch {
+    // Preference storage is optional. Authentication state is never stored here.
+  }
 }
 
 function userLabel(user) {
