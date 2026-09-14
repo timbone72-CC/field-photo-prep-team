@@ -4,6 +4,20 @@
 
 Control how Team changes are planned, implemented, tested, reviewed, merged, and rolled back. The process must match the real risk: strong enough to protect authorization, offline work, and field photos without turning every small improvement into a large project.
 
+## Mandatory reread before runtime work
+
+Before using this contract to authorize or classify a runtime change:
+
+1. read `AGENTS.md` completely;
+2. read the relevant phase in `docs/ROADMAP.md` completely;
+3. read `TESTING_CONTRACT.md`;
+4. read `INTEGRATION_CONTRACT.md` when the work touches Supabase/Auth/RLS, local persistence, offline behavior, reassignment, camera/photos, background sync, remote storage, upload, retry, or cleanup;
+5. read `docs/PHASE_STAGING_DOCTRINE.md` for phase transitions, device-gate staging, or decisions about how far implementation may proceed before phone evidence.
+
+Do not substitute memory, a chat summary, earlier-session notes, or an earlier read for these rereads.
+
+If the relevant roadmap phase does not contain an approved implementation plan, **STOP. Planning is the work.**
+
 ## Core rule
 
 No runtime phase begins until `docs/ROADMAP.md` contains an approved implementation plan for that phase. If the plan is incomplete, planning is the work.
@@ -164,6 +178,14 @@ A required failure stops merge/publication/deployment.
 Identify the prior known-good commit before merging runtime work. Prefer reverting the narrow change over stacking guesses onto a broken branch.
 
 Rollback must not intentionally delete unconfirmed local work, queued photos, protected originals, or remote identity evidence needed to prevent duplicates.
+
+## Relationship to the governance set
+
+- `AGENTS.md` owns mandatory entry/reread rules.
+- `docs/ROADMAP.md` owns approved phase behavior and completion gates.
+- `TESTING_CONTRACT.md` owns test selection/timing/failure-stop behavior.
+- `INTEGRATION_CONTRACT.md` owns cross-system authority and sync boundaries.
+- `docs/PHASE_STAGING_DOCTRINE.md` owns how far a phase proceeds before real-device evidence is required.
 
 ## Maintenance rule
 

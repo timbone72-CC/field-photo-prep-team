@@ -4,6 +4,20 @@
 
 Define which tests run, when they run, and when testing must stop work. The goal is proportional verification: enough evidence to protect multi-user authorization, offline work, and field photos without repeating expensive checks after every small edit.
 
+## Mandatory reread before test planning
+
+Before selecting tests, interpreting a failure, declaring a runtime head ready, or staging a device gate:
+
+1. read `AGENTS.md` completely;
+2. read the relevant phase in `docs/ROADMAP.md` completely;
+3. read `CHANGE_CONTROL_CONTRACT.md`;
+4. read `INTEGRATION_CONTRACT.md` when the work touches Supabase/Auth/RLS, local persistence, offline behavior, reassignment, camera/photos, background sync, remote storage, upload, retry, or cleanup;
+5. read `docs/PHASE_STAGING_DOCTRINE.md` before deciding that phone/device evidence is required or before declaring a device gate complete.
+
+Do not replace these rereads with memory, a chat summary, prior CI results from another runtime head, or earlier-session notes.
+
+If the roadmap does not define the behavior being tested, **STOP. Testing cannot invent the product rule.**
+
 ## Development loop
 
 - Documentation-only changes require diff/contract review only.
@@ -150,3 +164,11 @@ When reporting verification:
 - record the exact branch/SHA for staged device builds;
 - do not claim a physical behavior passed from unit tests alone;
 - record real-device observations once when they prove the required behavior.
+
+## Relationship to the governance set
+
+- `AGENTS.md` owns mandatory entry/reread rules.
+- `docs/ROADMAP.md` owns approved phase behavior and completion gates.
+- `CHANGE_CONTROL_CONTRACT.md` owns risk classification, approval, diff control, and rollback.
+- `INTEGRATION_CONTRACT.md` owns authority/synchronization boundaries across systems.
+- `docs/PHASE_STAGING_DOCTRINE.md` owns staging at genuine real-device boundaries.

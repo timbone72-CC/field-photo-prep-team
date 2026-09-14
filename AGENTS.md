@@ -11,6 +11,7 @@ At the start of **every work session**, before changing runtime code, tests that
 3. Read `CHANGE_CONTROL_CONTRACT.md`.
 4. Read `TESTING_CONTRACT.md`.
 5. Read `INTEGRATION_CONTRACT.md` whenever the change touches Supabase, RLS, Auth, Room/local persistence, offline synchronization, reassignment, camera/photo state, background work, Google Drive/storage, upload, retry, or cleanup.
+6. Read `docs/PHASE_STAGING_DOCTRINE.md` whenever work crosses a phase boundary, stages a physical-device gate, interprets phone/device evidence, or decides how far implementation may proceed before reality testing.
 
 Documentation-only work must still read this file and the document being changed.
 
@@ -44,8 +45,10 @@ When moving from one roadmap phase to the next:
 1. reread this file;
 2. reread the completed phase gate and evidence;
 3. reread the next phase in `docs/ROADMAP.md` in full;
-4. confirm unresolved decisions are explicitly identified;
-5. confirm the next implementation slice does not depend on an unproven device/provider assumption.
+4. reread `docs/PHASE_STAGING_DOCTRINE.md`;
+5. reread `INTEGRATION_CONTRACT.md` if the next phase crosses any system/data/device boundary it governs;
+6. confirm unresolved decisions are explicitly identified;
+7. confirm the next implementation slice does not depend on an unproven device/provider assumption.
 
 A phase transition is not authorized merely because the previous phase compiled or because a prior chat said “next.”
 
@@ -82,7 +85,7 @@ Examples:
 - noninteractive wording;
 - appearance-only changes that cannot alter authorization, work-order ownership, stored state, photo identity, capture, upload, deletion, or deployment.
 
-Use an isolated branch, inspect the diff, and perform only checks appropriate to the changed surface.
+Use an isolated branch, inspect the diff, and perform only the verification appropriate to the changed surface.
 
 ### Level 2 — normal feature or fix
 
