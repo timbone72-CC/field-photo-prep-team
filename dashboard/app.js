@@ -97,10 +97,9 @@ createForm.addEventListener('submit', async (event) => {
       throw new Error('The server did not return the created work order.');
     }
 
-    setCreateStatus(`Created and assigned ${created.wo_number}.`, false);
+    setCreateStatus(`Created and assigned ${created.wo_number}. Waiting for contractor receipt.`, false);
     createForm.reset();
     fillAssigneeSelect(assigneeSelect, assignableUsers, 'Choose Team user');
-
     await refreshWorkOrders();
   } catch (error) {
     setCreateStatus(error instanceof Error ? error.message : 'Unable to create work order.', true);
@@ -131,7 +130,12 @@ editForm.addEventListener('submit', async (event) => {
     }
 
     await refreshWorkOrders();
-    setEditStatus(`Saved ${updated.wo_number}.`, false);
+
+    if (updated.pending_assignee_user_id) {
+      setEditStatus('Saved. Reassignment request is waiting for the current contractor to approve or decline.', false);
+    } else {
+      setEditStatus(`Saved ${updated.wo_number}.`, false);
+    }
   } catch (error) {
     setEditStatus(error instanceof Error ? error.message : 'Unable to update work order.', true);
   } finally {
@@ -139,9 +143,7 @@ editForm.addEventListener('submit', async (event) => {
   }
 });
 
-cancelEditButton.addEventListener('click', () => {
-  closeEditor();
-});
+cancelEditButton.addEventListener('click', closeEditor);
 
 signOutButton.addEventListener('click', () => {
   accessToken = null;
@@ -181,9 +183,7 @@ async function signInWithPassword(email, password) {
 
 async function fetchCurrentUser() {
   requireAccessToken();
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    headers: authHeaders()
-  });
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: authHeaders() });
 
   if (!response.ok) {
     throw new Error(await readableError(response, 'Unable to verify the signed-in user.'));
@@ -198,6 +198,9 @@ async function fetchWorkOrders() {
     'id',
     'organization_id',
     'assigned_user_id',
+    'pending_assignee_user_id',
+    'reassignment_requested_at',
+    'assignment_received_at',
     'wo_number',
     'property_address',
     'work_type',
@@ -236,16 +239,8 @@ async function fetchAssignableUsers() {
   return response.json();
 }
 
-async function createWorkOrder({
-  woNumber,
-  propertyAddress,
-  workType,
-  instructions,
-  dueDate,
-  assignedUserId
-}) {
+async function createWorkOrder({ woNumber, propertyAddress, workType, instructions, dueDate, assignedUserId }) {
   requireAccessToken();
-
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_create_work_order`, {
     method: 'POST',
     headers: authHeaders(true),
@@ -266,17 +261,8 @@ async function createWorkOrder({
   return response.json();
 }
 
-async function updateWorkOrder({
-  workOrderId,
-  woNumber,
-  propertyAddress,
-  workType,
-  instructions,
-  dueDate,
-  assignedUserId
-}) {
+async function updateWorkOrder({ workOrderId, woNumber, propertyAddress, workType, instructions, dueDate, assignedUserId }) {
   requireAccessToken();
-
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_update_work_order`, {
     method: 'POST',
     headers: authHeaders(true),
@@ -331,10 +317,8 @@ function renderSignedIn(rows, users, organizationId) {
   loginCard.classList.add('hidden');
   resultsCard.classList.remove('hidden');
   accountHeading.textContent = `Signed in as ${currentUser.email}`;
-
   assignableUsers = users;
   workOrderRows = rows;
-
   renderRlsSummary(rows);
   renderAssignableUsers(users);
   renderWorkOrders(rows, organizationId);
@@ -352,7 +336,6 @@ function renderAssignableUsers(users) {
   if (!Array.isArray(users) || users.length === 0) {
     throw new Error('No assignable Team users were returned.');
   }
-
   fillAssigneeSelect(assigneeSelect, users, 'Choose Team user');
   assigneeSelect.disabled = false;
 }
@@ -360,9 +343,7 @@ function renderAssignableUsers(users) {
 function fillAssigneeSelect(select, users, placeholder, selectedUserId = '') {
   select.replaceChildren(new Option(placeholder, ''));
   for (const user of users) {
-    const option = new Option(`${user.email} (${user.role})`, user.user_id);
-    option.selected = user.user_id === selectedUserId;
-    select.add(option);
+    select.add(new Option(`${user.email} (${user.role})`, user.user_id));
   }
   if (selectedUserId) {
     select.value = selectedUserId;
@@ -387,14 +368,30 @@ function renderWorkOrders(rows, organizationId) {
     details.className = 'muted';
     details.textContent = `Work type: ${row.work_type} • Due: ${row.due_date} • Status: ${row.field_status}`;
 
+    const assignedUser = userById.get(row.assigned_user_id);
     const assignee = document.createElement('p');
     assignee.className = 'muted';
-    const assignedUser = userById.get(row.assigned_user_id);
-    assignee.textContent = `Assigned: ${assignedUser ? `${assignedUser.email} (${assignedUser.role})` : 'Team user'}`;
+    assignee.textContent = `Assigned: ${userLabel(assignedUser)}`;
+
+    const receipt = document.createElement('p');
+    receipt.className = row.assignment_received_at ? 'receipt received' : 'receipt waiting';
+    receipt.textContent = row.assignment_received_at
+      ? `Contractor receipt: Received ${formatTimestamp(row.assignment_received_at)}`
+      : 'Contractor receipt: Not yet received';
 
     const instructions = document.createElement('p');
     instructions.className = 'muted';
     instructions.textContent = `Instructions: ${row.instructions || 'None'}`;
+
+    article.append(title, address, details, assignee, receipt, instructions);
+
+    if (row.pending_assignee_user_id) {
+      const pendingUser = userById.get(row.pending_assignee_user_id);
+      const pending = document.createElement('p');
+      pending.className = 'handoff pending';
+      pending.textContent = `Reassignment requested to ${userLabel(pendingUser)} — waiting for current contractor approval.`;
+      article.append(pending);
+    }
 
     const actions = document.createElement('div');
     actions.className = 'work-order-actions';
@@ -402,11 +399,15 @@ function renderWorkOrders(rows, organizationId) {
     const editButton = document.createElement('button');
     editButton.type = 'button';
     editButton.className = 'secondary';
-    editButton.textContent = row.field_status === 'ASSIGNED' ? 'Edit / Reassign' : 'Edit';
+    editButton.textContent = row.field_status === 'IN_PROGRESS'
+      ? 'Edit / Request Reassignment'
+      : row.field_status === 'ASSIGNED'
+        ? 'Edit / Reassign'
+        : 'Edit';
     editButton.addEventListener('click', () => openEditor(row.id));
 
     actions.append(editButton);
-    article.append(title, address, details, assignee, instructions, actions);
+    article.append(actions);
     workOrders.append(article);
   }
 
@@ -430,14 +431,20 @@ function openEditor(workOrderId) {
   editInstructionsInput.value = row.instructions || '';
   editDueDateInput.value = row.due_date;
 
-  fillAssigneeSelect(editAssigneeSelect, assignableUsers, 'Choose Team user', row.assigned_user_id);
-  editAssigneeSelect.disabled = row.field_status !== 'ASSIGNED';
+  const selectedAssignee = row.pending_assignee_user_id || row.assigned_user_id;
+  fillAssigneeSelect(editAssigneeSelect, assignableUsers, 'Choose Team user', selectedAssignee);
 
   if (row.field_status === 'ASSIGNED') {
-    editReassignNote.textContent = 'Reassignment is allowed while field status is ASSIGNED.';
+    editAssigneeSelect.disabled = false;
+    editReassignNote.textContent = 'Changing the assignee now reassigns immediately. The new contractor must then receive the WO in the app.';
+  } else if (row.field_status === 'IN_PROGRESS') {
+    editAssigneeSelect.disabled = false;
+    editReassignNote.textContent = row.pending_assignee_user_id
+      ? 'A reassignment request is already waiting for the current contractor. Choose the current assignee and Save to cancel that request.'
+      : 'Changing the assignee sends a request to the current contractor. The WO moves only if that contractor approves.';
   } else {
-    editReassignNote.textContent =
-      `Reassignment is locked because field status is ${row.field_status}. Dispatch details may still be corrected.`;
+    editAssigneeSelect.disabled = true;
+    editReassignNote.textContent = `Reassignment is locked because field status is ${row.field_status}. Dispatch details may still be corrected.`;
   }
 
   setEditStatus('', false);
@@ -455,16 +462,23 @@ function closeEditor() {
   editSection.classList.add('hidden');
 }
 
+function userLabel(user) {
+  return user ? `${user.email} (${user.role})` : 'Team user';
+}
+
+function formatTimestamp(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
 function authHeaders(withJson = false) {
   const headers = {
     apikey: SUPABASE_PUBLISHABLE_KEY,
     Authorization: `Bearer ${accessToken}`
   };
-
   if (withJson) {
     headers['Content-Type'] = 'application/json';
   }
-
   return headers;
 }
 
