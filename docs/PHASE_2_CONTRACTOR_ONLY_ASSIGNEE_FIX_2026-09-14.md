@@ -108,15 +108,6 @@ Post-DDL advisors:
 
 No advisor finding indicates a regression caused by this migration.
 
-Final repository/runtime head verified for merge gate:
-
-`6b229a344f066c7b1ea77b854e1e01a6386e1615`
-
-Final complete automated verification on that exact head:
-
-- Admin Dashboard Gate CI — **PASS**.
-- Android Team Client CI — **PASS**.
-
 ## Remaining Phase 2 closure smoke
 
 The Team development project currently has one legitimate Contractor Auth account plus one Admin Auth account. After the contractor-only fix, the Admin is intentionally no longer a legal reassignment target.
