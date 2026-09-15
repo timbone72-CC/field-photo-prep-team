@@ -105,12 +105,18 @@ select
   end
 from public.work_orders wo;
 
+-- Adding the run pointer is a schema backfill, not a business edit. Preserve
+-- every existing work-order updated_at timestamp while writing the pointer.
+alter table public.work_orders disable trigger work_orders_set_updated_at;
+
 update public.work_orders wo
 set current_run_id = r.id,
     current_run_sequence = r.run_sequence
 from public.work_order_runs r
 where r.work_order_id = wo.id
   and r.run_sequence = 1;
+
+alter table public.work_orders enable trigger work_orders_set_updated_at;
 
 insert into public.work_order_assignments (
   run_id,
