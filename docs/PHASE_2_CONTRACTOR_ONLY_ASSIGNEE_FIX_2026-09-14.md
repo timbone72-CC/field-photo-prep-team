@@ -10,14 +10,14 @@ The approved roadmap says Admin dispatches field work to Contractors. The server
 
 ## Evidence / root cause
 
-Current live/repository functions explicitly allow `role in ('ADMIN', 'CONTRACTOR')` when validating assignment targets:
+Current live/repository functions explicitly allowed `role in ('ADMIN', 'CONTRACTOR')` when validating assignment targets:
 
 - `private.admin_list_assignable_users()`
 - `private.admin_create_work_order(...)`
 - `private.admin_update_work_order(...)`
 - `private.respond_reassignment(...)` when an in-progress handoff is accepted
 
-Therefore an Admin can currently appear as assignable and a modified client could submit an Admin UUID as an assignee even if the UI filtered it.
+Therefore an Admin could appear as assignable and a modified client could submit an Admin UUID as an assignee even if the UI filtered it.
 
 ## Approved behavior being restored
 
@@ -38,7 +38,11 @@ The old Admin-only control row may remain as test evidence, but new create/reass
 
 ## Runtime change
 
-Add one forward Supabase migration that replaces only the current private assignment RPC implementations so that:
+Forward migration:
+
+`20260915014259_restrict_work_order_assignment_to_contractors.sql`
+
+It replaces only the current private assignment RPC implementations so that:
 
 1. `admin_list_assignable_users()` returns only active same-org Contractors;
 2. `admin_create_work_order(...)` rejects any target whose role is not `CONTRACTOR`;
@@ -79,6 +83,36 @@ After applying the migration:
 - complete existing CI runs on the exact final branch head before merge.
 
 The real-phone Phase 2 closure smoke is resumed only after the server boundary passes the automated/live checks.
+
+## Verification evidence
+
+Migration applied successfully to the Team development Supabase project. Live migration history recorded version `20260915014259`, and the repository migration filename was aligned to that exact version.
+
+Controlled JWT-context verification used transaction rollback/disposable state so no test mutation remained afterward.
+
+Results:
+
+- `admin_list_assignable_users()` returned only the same-org `CONTRACTOR`; Admin was absent — **PASS**.
+- `admin_create_work_order(...)` with Admin target returned SQLSTATE `42501` — **PASS**.
+- `admin_create_work_order(...)` with valid Contractor target succeeded inside rollback transaction — **PASS**.
+- `admin_update_work_order(...)` with Admin target returned SQLSTATE `42501` — **PASS**.
+- `admin_update_work_order(...)` with valid/current Contractor succeeded inside rollback transaction — **PASS**.
+- crafted `IN_PROGRESS` handoff with Admin as pending target was rejected on accept with SQLSTATE `42501` — **PASS**.
+- after rollback verification, `TEST-0003-DASHBOARD` remained `ASSIGNED` to the Contractor with its prior receipt intact and no pending reassignment — **PASS**.
+
+Post-DDL advisors:
+
+- Security advisor: existing warning that Supabase Auth leaked-password protection is disabled. This fix does not change Auth password policy and did not introduce the warning.
+- Performance advisor: six informational unused-index notices on existing Team indexes. This function-only migration added no index and did not introduce them.
+
+No advisor finding indicates a regression caused by this migration.
+
+Remaining before merge:
+
+- final branch CI on the exact head;
+- real Galaxy S22 dashboard check that the assignee picker now shows Contractor-only;
+- resume the compact Phase 2 reassignment/receipt closure smoke as far as available contractor accounts permit;
+- explicit operator Level-3 pre-merge approval.
 
 ## Rollback
 
