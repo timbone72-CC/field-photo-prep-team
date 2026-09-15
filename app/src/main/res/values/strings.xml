@@ -3,8 +3,9 @@
     <string name="phase1_title">Team Contractor Login</string>
     <string name="phase1_intro">Sign in with your Team account. Work orders are returned by Supabase RLS; the app does not filter assignments locally.</string>
     <string name="assignments_title">My Assignments</string>
-    <string name="assignments_intro">Work currently assigned to your Team account is shown below.</string>
+    <string name="assignments_intro">Active work is shown first. Completed work is kept separate below.</string>
     <string name="assignments_heading">Current Assignments</string>
+    <string name="completed_work_heading">Completed Work</string>
     <string name="refresh_assignments">Refresh Assignments</string>
     <string name="refreshing_assignments">Refreshing assignments…</string>
     <string name="assignments_refreshed">Assignments refreshed.</string>
@@ -16,5 +17,5 @@
     <string name="signing_in">Signing in…</string>
     <string name="loading_work">Loading assigned work…</string>
     <string name="work_orders_heading">Work Orders Returned By Server</string>
-    <string name="no_assignments">No assignments are currently assigned to this account.</string>
+    <string name="no_assignments">No current assignments.</string>
 </resources>
