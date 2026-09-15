@@ -99,6 +99,7 @@ Results:
 - `admin_update_work_order(...)` with valid/current Contractor succeeded inside rollback transaction — **PASS**.
 - crafted `IN_PROGRESS` handoff with Admin as pending target was rejected on accept with SQLSTATE `42501` — **PASS**.
 - after rollback verification, `TEST-0003-DASHBOARD` remained `ASSIGNED` to the Contractor with its prior receipt intact and no pending reassignment — **PASS**.
+- Galaxy S22 hosted Admin-dashboard refresh showed the assignee picker containing only the Contractor account; the Admin account was no longer offered — **PASS**.
 
 Post-DDL advisors:
 
@@ -107,12 +108,26 @@ Post-DDL advisors:
 
 No advisor finding indicates a regression caused by this migration.
 
-Remaining before merge:
+## Remaining Phase 2 closure smoke
 
-- final branch CI on the exact head;
-- real Galaxy S22 dashboard check that the assignee picker now shows Contractor-only;
-- resume the compact Phase 2 reassignment/receipt closure smoke as far as available contractor accounts permit;
+The Team development project currently has one legitimate Contractor Auth account plus one Admin Auth account. After the contractor-only fix, the Admin is intentionally no longer a legal reassignment target.
+
+Therefore the remaining away/back real-client smoke is **BLOCKED BY FIXTURE AVAILABILITY, not by a runtime failure**:
+
+1. a second legitimate Contractor account is needed to reassign `TEST-0003-DASHBOARD` away;
+2. the current Contractor can then refresh and prove the WO disappears;
+3. Admin can verify receipt reset and reassign it back;
+4. current Contractor can refresh and prove receipt confirmation again;
+5. if practical, an `IN_PROGRESS` decline/approve handoff can use the same second Contractor fixture.
+
+No fake `auth.users` row will be inserted to manufacture this test. A one-time attempt to create a genuine disposable Auth fixture through normal public signup failed before any user was created; the helper was removed and Supabase was verified to contain no extra fixture user.
+
+Remaining before merge of this authorization fix:
+
+- final branch CI on the exact final head;
 - explicit operator Level-3 pre-merge approval.
+
+The second-Contractor smoke may be completed once a legitimate second Contractor account is available; it is tracked separately from whether this contractor-only security correction itself is valid.
 
 ## Rollback
 
