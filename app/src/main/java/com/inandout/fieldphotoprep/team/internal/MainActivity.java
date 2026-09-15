@@ -27,15 +27,19 @@ public final class MainActivity extends Activity {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final SupabaseApi api = new SupabaseApi();
 
+    private TextView screenTitle;
+    private TextView screenIntro;
     private EditText emailInput;
     private EditText passwordInput;
     private Button signInButton;
     private Button signOutButton;
+    private Button refreshAssignmentsButton;
     private ProgressBar progress;
     private TextView statusText;
     private TextView identityText;
     private TextView rlsText;
     private TextView workOrdersHeading;
+    private TextView assignmentSummaryText;
     private LinearLayout workOrdersContainer;
     private SupabaseApi.AuthSession currentSession;
 
@@ -61,13 +65,13 @@ public final class MainActivity extends Activity {
         TextView appName = text(getString(R.string.app_name), 14, false);
         root.addView(appName);
 
-        TextView title = text(getString(R.string.phase1_title), 26, true);
-        title.setPadding(0, dp(8), 0, dp(6));
-        root.addView(title);
+        screenTitle = text(getString(R.string.phase1_title), 26, true);
+        screenTitle.setPadding(0, dp(8), 0, dp(6));
+        root.addView(screenTitle);
 
-        TextView intro = text(getString(R.string.phase1_intro), 15, false);
-        intro.setPadding(0, 0, 0, dp(18));
-        root.addView(intro);
+        screenIntro = text(getString(R.string.phase1_intro), 15, false);
+        screenIntro.setPadding(0, 0, 0, dp(18));
+        root.addView(screenIntro);
 
         emailInput = new EditText(this);
         emailInput.setHint(R.string.email_hint);
@@ -117,12 +121,24 @@ public final class MainActivity extends Activity {
         root.addView(signOutButton);
 
         workOrdersHeading = text(getString(R.string.work_orders_heading), 20, true);
-        workOrdersHeading.setPadding(0, dp(20), 0, dp(8));
+        workOrdersHeading.setPadding(0, dp(20), 0, dp(4));
         root.addView(workOrdersHeading);
+
+        assignmentSummaryText = text("", 14, false);
+        assignmentSummaryText.setPadding(0, 0, 0, dp(8));
+        root.addView(assignmentSummaryText);
+
+        refreshAssignmentsButton = new Button(this);
+        refreshAssignmentsButton.setText(R.string.refresh_assignments);
+        refreshAssignmentsButton.setOnClickListener(v -> refreshAssignments());
+        refreshAssignmentsButton.setLayoutParams(matchWrap());
+        root.addView(refreshAssignmentsButton);
 
         workOrdersContainer = new LinearLayout(this);
         workOrdersContainer.setOrientation(LinearLayout.VERTICAL);
-        workOrdersContainer.setLayoutParams(matchWrap());
+        LinearLayout.LayoutParams workOrderParams = matchWrap();
+        workOrderParams.topMargin = dp(12);
+        workOrdersContainer.setLayoutParams(workOrderParams);
         root.addView(workOrdersContainer);
 
         return scroll;
@@ -173,14 +189,69 @@ public final class MainActivity extends Activity {
         passwordInput.setVisibility(View.GONE);
         signInButton.setVisibility(View.GONE);
         signOutButton.setVisibility(View.VISIBLE);
+        refreshAssignmentsButton.setVisibility(View.VISIBLE);
         identityText.setVisibility(View.VISIBLE);
         rlsText.setVisibility(View.VISIBLE);
         workOrdersHeading.setVisibility(View.VISIBLE);
+        assignmentSummaryText.setVisibility(View.VISIBLE);
         workOrdersContainer.setVisibility(View.VISIBLE);
+
+        if ("CONTRACTOR".equals(session.role)) {
+            screenTitle.setText(R.string.assignments_title);
+            screenIntro.setText(R.string.assignments_intro);
+            workOrdersHeading.setText(R.string.assignments_heading);
+        } else {
+            screenTitle.setText(R.string.phase1_title);
+            screenIntro.setText(R.string.phase1_intro);
+            workOrdersHeading.setText(R.string.work_orders_heading);
+        }
 
         identityText.setText("Account: " + session.email + "\nRole: " + session.role);
         updateRlsProof(session, workOrders);
         renderWorkOrders(workOrders);
+    }
+
+    private void refreshAssignments() {
+        SupabaseApi.AuthSession session = currentSession;
+        if (session == null) {
+            statusText.setText("Sign in again before refreshing assignments.");
+            return;
+        }
+
+        refreshAssignmentsButton.setEnabled(false);
+        progress.setVisibility(View.VISIBLE);
+        statusText.setText(R.string.refreshing_assignments);
+
+        executor.execute(() -> {
+            try {
+                List<SupabaseApi.WorkOrder> workOrders = api.fetchWorkOrders(session.accessToken);
+                if ("CONTRACTOR".equals(session.role)) {
+                    for (SupabaseApi.WorkOrder workOrder : workOrders) {
+                        if (session.userId.equals(workOrder.assignedUserId)
+                                && !"CANCELLED".equals(workOrder.fieldStatus)) {
+                            api.acknowledgeAssignmentReceived(session.accessToken, workOrder.id);
+                        }
+                    }
+                    workOrders = api.fetchWorkOrders(session.accessToken);
+                }
+
+                List<SupabaseApi.WorkOrder> finalWorkOrders = workOrders;
+                mainHandler.post(() -> {
+                    progress.setVisibility(View.GONE);
+                    refreshAssignmentsButton.setEnabled(true);
+                    updateRlsProof(session, finalWorkOrders);
+                    renderWorkOrders(finalWorkOrders);
+                    statusText.setText(R.string.assignments_refreshed);
+                });
+            } catch (Exception error) {
+                String message = safeMessage(error, "Unable to refresh assignments.");
+                mainHandler.post(() -> {
+                    progress.setVisibility(View.GONE);
+                    refreshAssignmentsButton.setEnabled(true);
+                    statusText.setText(message);
+                });
+            }
+        });
     }
 
     private void updateRlsProof(SupabaseApi.AuthSession session, List<SupabaseApi.WorkOrder> workOrders) {
@@ -215,8 +286,12 @@ public final class MainActivity extends Activity {
 
     private void renderWorkOrders(List<SupabaseApi.WorkOrder> workOrders) {
         workOrdersContainer.removeAllViews();
+        assignmentSummaryText.setText(assignmentCountText(workOrders.size()));
+
         if (workOrders.isEmpty()) {
-            workOrdersContainer.addView(text(getString(R.string.no_work_orders), 15, false));
+            TextView empty = text(getString(R.string.no_assignments), 15, false);
+            empty.setPadding(0, dp(10), 0, dp(10));
+            workOrdersContainer.addView(empty);
             return;
         }
 
@@ -228,11 +303,24 @@ public final class MainActivity extends Activity {
             cardParams.bottomMargin = dp(10);
             card.setLayoutParams(cardParams);
 
-            card.addView(text(workOrder.woNumber, 18, true));
-            card.addView(text(workOrder.propertyAddress, 16, false));
-            card.addView(text("Work type: " + workOrder.workType, 14, false));
-            card.addView(text("Due: " + workOrder.dueDate, 14, false));
-            card.addView(text("Field status: " + workOrder.fieldStatus, 14, false));
+            String address = workOrder.propertyAddress.isEmpty()
+                    ? "Address not provided"
+                    : workOrder.propertyAddress;
+            String woNumber = workOrder.woNumber.isEmpty()
+                    ? "Work order"
+                    : "WO " + workOrder.woNumber;
+            String workType = workOrder.workType.isEmpty()
+                    ? "Work type not provided"
+                    : workOrder.workType;
+            String dueDate = workOrder.dueDate.isEmpty()
+                    ? "Not set"
+                    : workOrder.dueDate;
+
+            card.addView(text(address, 18, true));
+            card.addView(text(woNumber, 14, true));
+            card.addView(text("Work type: " + workType, 14, false));
+            card.addView(text("Due: " + dueDate, 14, false));
+            card.addView(text("Status: " + displayStatus(workOrder.fieldStatus), 14, false));
             card.addView(text(
                     workOrder.assignmentReceivedAt.isEmpty()
                             ? "Assignment receipt: Pending"
@@ -241,7 +329,9 @@ public final class MainActivity extends Activity {
                     !workOrder.assignmentReceivedAt.isEmpty()));
 
             if (!workOrder.instructions.isEmpty()) {
-                card.addView(text("Instructions: " + workOrder.instructions, 14, false));
+                TextView instructions = text("Instructions: " + workOrder.instructions, 14, false);
+                instructions.setPadding(0, dp(8), 0, 0);
+                card.addView(instructions);
             }
 
             if (currentSession != null
@@ -274,6 +364,20 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private String assignmentCountText(int count) {
+        if (count == 1) {
+            return "1 assignment returned by the server";
+        }
+        return count + " assignments returned by the server";
+    }
+
+    private String displayStatus(String status) {
+        if (status == null || status.isEmpty()) {
+            return "Unknown";
+        }
+        return status.replace('_', ' ');
+    }
+
     private void respondToReassignment(String workOrderId, boolean accept) {
         SupabaseApi.AuthSession session = currentSession;
         if (session == null) {
@@ -282,6 +386,7 @@ public final class MainActivity extends Activity {
         }
 
         progress.setVisibility(View.VISIBLE);
+        refreshAssignmentsButton.setEnabled(false);
         statusText.setText(accept ? "Approving reassignment…" : "Declining reassignment…");
         executor.execute(() -> {
             try {
@@ -289,6 +394,7 @@ public final class MainActivity extends Activity {
                 List<SupabaseApi.WorkOrder> workOrders = api.fetchWorkOrders(session.accessToken);
                 mainHandler.post(() -> {
                     progress.setVisibility(View.GONE);
+                    refreshAssignmentsButton.setEnabled(true);
                     updateRlsProof(session, workOrders);
                     renderWorkOrders(workOrders);
                     statusText.setText(accept
@@ -299,6 +405,7 @@ public final class MainActivity extends Activity {
                 String message = safeMessage(error, "Unable to respond to reassignment.");
                 mainHandler.post(() -> {
                     progress.setVisibility(View.GONE);
+                    refreshAssignmentsButton.setEnabled(true);
                     statusText.setText(message);
                 });
             }
@@ -308,18 +415,25 @@ public final class MainActivity extends Activity {
     private void showSignedOut() {
         currentSession = null;
         passwordInput.setText("");
+        screenTitle.setText(R.string.phase1_title);
+        screenIntro.setText(R.string.phase1_intro);
         emailInput.setVisibility(View.VISIBLE);
         passwordInput.setVisibility(View.VISIBLE);
         signInButton.setVisibility(View.VISIBLE);
         signInButton.setEnabled(true);
         signOutButton.setVisibility(View.GONE);
+        refreshAssignmentsButton.setVisibility(View.GONE);
+        refreshAssignmentsButton.setEnabled(true);
         progress.setVisibility(View.GONE);
         statusText.setText(R.string.signed_out);
         identityText.setText("");
         identityText.setVisibility(View.GONE);
         rlsText.setText("");
         rlsText.setVisibility(View.GONE);
+        workOrdersHeading.setText(R.string.work_orders_heading);
         workOrdersHeading.setVisibility(View.GONE);
+        assignmentSummaryText.setText("");
+        assignmentSummaryText.setVisibility(View.GONE);
         workOrdersContainer.removeAllViews();
         workOrdersContainer.setVisibility(View.GONE);
     }
