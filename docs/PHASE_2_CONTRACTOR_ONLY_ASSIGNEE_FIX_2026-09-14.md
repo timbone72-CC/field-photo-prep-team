@@ -108,6 +108,15 @@ Post-DDL advisors:
 
 No advisor finding indicates a regression caused by this migration.
 
+Final repository/runtime head verified for merge gate:
+
+`6b229a344f066c7b1ea77b854e1e01a6386e1615`
+
+Final complete automated verification on that exact head:
+
+- Admin Dashboard Gate CI — **PASS**.
+- Android Team Client CI — **PASS**.
+
 ## Remaining Phase 2 closure smoke
 
 The Team development project currently has one legitimate Contractor Auth account plus one Admin Auth account. After the contractor-only fix, the Admin is intentionally no longer a legal reassignment target.
@@ -121,11 +130,6 @@ Therefore the remaining away/back real-client smoke is **BLOCKED BY FIXTURE AVAI
 5. if practical, an `IN_PROGRESS` decline/approve handoff can use the same second Contractor fixture.
 
 No fake `auth.users` row will be inserted to manufacture this test. A one-time attempt to create a genuine disposable Auth fixture through normal public signup failed before any user was created; the helper was removed and Supabase was verified to contain no extra fixture user.
-
-Remaining before merge of this authorization fix:
-
-- final branch CI on the exact final head;
-- explicit operator Level-3 pre-merge approval.
 
 The second-Contractor smoke may be completed once a legitimate second Contractor account is available; it is tracked separately from whether this contractor-only security correction itself is valid.
 
