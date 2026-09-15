@@ -19,6 +19,7 @@ public final class AssignmentRepositoryTest {
     public void receiptIsNotAcknowledgedWhenDurableSaveFails() {
         FakeRemote remote = new FakeRemote(Collections.singletonList(workOrder("", USER, ORG)));
         FakeStore store = new FakeStore();
+        remote.observedStore = store;
         store.failReplace = true;
         AssignmentRepository repository = new AssignmentRepository(remote, store);
 
@@ -34,6 +35,7 @@ public final class AssignmentRepositoryTest {
                 Collections.singletonList(workOrder("", USER, ORG)),
                 Collections.singletonList(workOrder("2026-09-15T12:00:00Z", USER, ORG)));
         FakeStore store = new FakeStore();
+        remote.observedStore = store;
         AssignmentRepository repository = new AssignmentRepository(remote, store);
 
         List<SupabaseApi.WorkOrder> result = repository.refresh(session(USER, ORG));
@@ -48,6 +50,7 @@ public final class AssignmentRepositoryTest {
     public void contractorCannotCacheForeignAssignmentEvenIfRemoteReturnsIt() {
         FakeRemote remote = new FakeRemote(Collections.singletonList(workOrder("", "user-b", ORG)));
         FakeStore store = new FakeStore();
+        remote.observedStore = store;
         AssignmentRepository repository = new AssignmentRepository(remote, store);
 
         assertThrows(IllegalStateException.class, () -> repository.refresh(session(USER, ORG)));
@@ -113,11 +116,7 @@ public final class AssignmentRepositoryTest {
         @Override
         public void acknowledgeAssignmentReceived(String accessToken, String workOrderId) {
             acknowledgementCount++;
-            if (observedStore != null) {
-                ackObservedAfterStore = observedStore.replaceCount > 0;
-            } else {
-                ackObservedAfterStore = true;
-            }
+            ackObservedAfterStore = observedStore != null && observedStore.replaceCount > 0;
         }
     }
 
