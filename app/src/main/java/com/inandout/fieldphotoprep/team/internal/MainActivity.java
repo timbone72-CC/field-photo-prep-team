@@ -191,7 +191,6 @@ public final class MainActivity extends Activity {
         signOutButton.setVisibility(View.VISIBLE);
         refreshAssignmentsButton.setVisibility(View.VISIBLE);
         identityText.setVisibility(View.VISIBLE);
-        rlsText.setVisibility(View.VISIBLE);
         workOrdersHeading.setVisibility(View.VISIBLE);
         assignmentSummaryText.setVisibility(View.VISIBLE);
         workOrdersContainer.setVisibility(View.VISIBLE);
@@ -273,102 +272,153 @@ public final class MainActivity extends Activity {
             rlsText.setText("RLS CHECK: PASS\n"
                     + "Server returned " + workOrders.size() + " work order(s), all assigned to this account. "
                     + "The admin-only control WO was not returned. No client-side assignment filter was used.");
+            rlsText.setVisibility(View.GONE);
         } else if ("CONTRACTOR".equals(session.role) && workOrders.isEmpty()) {
             rlsText.setText("RLS CHECK: PASS\nNo work orders are currently assigned to this contractor account.");
+            rlsText.setVisibility(View.GONE);
         } else if ("CONTRACTOR".equals(session.role)) {
             rlsText.setText("RLS CHECK: NEEDS REVIEW\n"
                     + "The contractor response contained a row that should not have been returned.");
+            rlsText.setVisibility(View.VISIBLE);
         } else {
             rlsText.setText("Signed in as " + session.role
                     + ". Contractor-only RLS proof is evaluated when a CONTRACTOR account signs in.");
+            rlsText.setVisibility(View.VISIBLE);
         }
     }
 
     private void renderWorkOrders(List<SupabaseApi.WorkOrder> workOrders) {
         workOrdersContainer.removeAllViews();
-        assignmentSummaryText.setText(assignmentCountText(workOrders.size()));
 
-        if (workOrders.isEmpty()) {
+        int currentCount = 0;
+        int completedCount = 0;
+        for (SupabaseApi.WorkOrder workOrder : workOrders) {
+            if (isCurrentAssignment(workOrder.fieldStatus)) {
+                currentCount++;
+            } else if (isCompletedWork(workOrder.fieldStatus)) {
+                completedCount++;
+            }
+        }
+
+        assignmentSummaryText.setText(currentAssignmentCountText(currentCount));
+
+        if (currentCount == 0) {
             TextView empty = text(getString(R.string.no_assignments), 15, false);
             empty.setPadding(0, dp(10), 0, dp(10));
             workOrdersContainer.addView(empty);
-            return;
+        } else {
+            for (SupabaseApi.WorkOrder workOrder : workOrders) {
+                if (isCurrentAssignment(workOrder.fieldStatus)) {
+                    addWorkOrderCard(workOrder);
+                }
+            }
         }
 
-        for (SupabaseApi.WorkOrder workOrder : workOrders) {
-            LinearLayout card = new LinearLayout(this);
-            card.setOrientation(LinearLayout.VERTICAL);
-            card.setPadding(dp(12), dp(12), dp(12), dp(12));
-            LinearLayout.LayoutParams cardParams = matchWrap();
-            cardParams.bottomMargin = dp(10);
-            card.setLayoutParams(cardParams);
+        if (completedCount > 0) {
+            TextView completedHeading = text(getString(R.string.completed_work_heading), 20, true);
+            completedHeading.setPadding(0, dp(20), 0, dp(4));
+            workOrdersContainer.addView(completedHeading);
 
-            String address = workOrder.propertyAddress.isEmpty()
-                    ? "Address not provided"
-                    : workOrder.propertyAddress;
-            String woNumber = workOrder.woNumber.isEmpty()
-                    ? "Work order"
-                    : "WO " + workOrder.woNumber;
-            String workType = workOrder.workType.isEmpty()
-                    ? "Work type not provided"
-                    : workOrder.workType;
-            String dueDate = workOrder.dueDate.isEmpty()
-                    ? "Not set"
-                    : workOrder.dueDate;
+            TextView completedSummary = text(completedCountText(completedCount), 14, false);
+            completedSummary.setPadding(0, 0, 0, dp(8));
+            workOrdersContainer.addView(completedSummary);
 
-            card.addView(text(address, 18, true));
-            card.addView(text(woNumber, 14, true));
-            card.addView(text("Work type: " + workType, 14, false));
-            card.addView(text("Due: " + dueDate, 14, false));
-            card.addView(text("Status: " + displayStatus(workOrder.fieldStatus), 14, false));
-            card.addView(text(
-                    workOrder.assignmentReceivedAt.isEmpty()
-                            ? "Assignment receipt: Pending"
-                            : "Assignment receipt: Confirmed",
-                    14,
-                    !workOrder.assignmentReceivedAt.isEmpty()));
-
-            if (!workOrder.instructions.isEmpty()) {
-                TextView instructions = text("Instructions: " + workOrder.instructions, 14, false);
-                instructions.setPadding(0, dp(8), 0, 0);
-                card.addView(instructions);
+            for (SupabaseApi.WorkOrder workOrder : workOrders) {
+                if (isCompletedWork(workOrder.fieldStatus)) {
+                    addWorkOrderCard(workOrder);
+                }
             }
-
-            if (currentSession != null
-                    && currentSession.userId.equals(workOrder.assignedUserId)
-                    && "IN_PROGRESS".equals(workOrder.fieldStatus)
-                    && !workOrder.pendingAssigneeUserId.isEmpty()) {
-                TextView request = text(
-                        "Admin requested that this in-progress WO be reassigned. Approve the handoff if you need to release it, or decline to keep the assignment.",
-                        14,
-                        true);
-                request.setPadding(0, dp(12), 0, dp(8));
-                card.addView(request);
-
-                Button approve = new Button(this);
-                approve.setText("Approve Reassignment");
-                approve.setOnClickListener(v -> respondToReassignment(workOrder.id, true));
-                approve.setLayoutParams(matchWrap());
-                card.addView(approve);
-
-                Button decline = new Button(this);
-                decline.setText("Decline Reassignment");
-                decline.setOnClickListener(v -> respondToReassignment(workOrder.id, false));
-                LinearLayout.LayoutParams declineParams = matchWrap();
-                declineParams.topMargin = dp(6);
-                decline.setLayoutParams(declineParams);
-                card.addView(decline);
-            }
-
-            workOrdersContainer.addView(card);
         }
     }
 
-    private String assignmentCountText(int count) {
-        if (count == 1) {
-            return "1 assignment returned by the server";
+    private void addWorkOrderCard(SupabaseApi.WorkOrder workOrder) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(12), dp(12), dp(12), dp(12));
+        LinearLayout.LayoutParams cardParams = matchWrap();
+        cardParams.bottomMargin = dp(10);
+        card.setLayoutParams(cardParams);
+
+        String address = workOrder.propertyAddress.isEmpty()
+                ? "Address not provided"
+                : workOrder.propertyAddress;
+        String woNumber = workOrder.woNumber.isEmpty()
+                ? "Work order"
+                : "WO " + workOrder.woNumber;
+        String workType = workOrder.workType.isEmpty()
+                ? "Work type not provided"
+                : workOrder.workType;
+        String dueDate = workOrder.dueDate.isEmpty()
+                ? "Not set"
+                : workOrder.dueDate;
+
+        card.addView(text(address, 18, true));
+        card.addView(text(woNumber, 14, true));
+        card.addView(text("Work type: " + workType, 14, false));
+        card.addView(text("Due: " + dueDate, 14, false));
+        card.addView(text("Status: " + displayStatus(workOrder.fieldStatus), 14, false));
+        card.addView(text(
+                workOrder.assignmentReceivedAt.isEmpty()
+                        ? "Assignment receipt: Pending"
+                        : "Assignment receipt: Confirmed",
+                14,
+                !workOrder.assignmentReceivedAt.isEmpty()));
+
+        if (!workOrder.instructions.isEmpty()) {
+            TextView instructions = text("Instructions: " + workOrder.instructions, 14, false);
+            instructions.setPadding(0, dp(8), 0, 0);
+            card.addView(instructions);
         }
-        return count + " assignments returned by the server";
+
+        if (currentSession != null
+                && currentSession.userId.equals(workOrder.assignedUserId)
+                && "IN_PROGRESS".equals(workOrder.fieldStatus)
+                && !workOrder.pendingAssigneeUserId.isEmpty()) {
+            TextView request = text(
+                    "Admin requested that this in-progress WO be reassigned. Approve the handoff if you need to release it, or decline to keep the assignment.",
+                    14,
+                    true);
+            request.setPadding(0, dp(12), 0, dp(8));
+            card.addView(request);
+
+            Button approve = new Button(this);
+            approve.setText("Approve Reassignment");
+            approve.setOnClickListener(v -> respondToReassignment(workOrder.id, true));
+            approve.setLayoutParams(matchWrap());
+            card.addView(approve);
+
+            Button decline = new Button(this);
+            decline.setText("Decline Reassignment");
+            decline.setOnClickListener(v -> respondToReassignment(workOrder.id, false));
+            LinearLayout.LayoutParams declineParams = matchWrap();
+            declineParams.topMargin = dp(6);
+            decline.setLayoutParams(declineParams);
+            card.addView(decline);
+        }
+
+        workOrdersContainer.addView(card);
+    }
+
+    private boolean isCurrentAssignment(String status) {
+        return "ASSIGNED".equals(status) || "IN_PROGRESS".equals(status);
+    }
+
+    private boolean isCompletedWork(String status) {
+        return "FIELD_COMPLETE".equals(status);
+    }
+
+    private String currentAssignmentCountText(int count) {
+        if (count == 1) {
+            return "1 current assignment";
+        }
+        return count + " current assignments";
+    }
+
+    private String completedCountText(int count) {
+        if (count == 1) {
+            return "1 completed work order";
+        }
+        return count + " completed work orders";
     }
 
     private String displayStatus(String status) {
