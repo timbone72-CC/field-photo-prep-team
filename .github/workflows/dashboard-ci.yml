@@ -98,13 +98,17 @@ jobs:
             echo 'Dashboard must not directly PATCH work_orders; use narrow RPCs.' >&2
             exit 1
           fi
-      - name: Verify Contractor invite foundation
+      - name: Verify Contractor invite foundation and cancellation
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'contractors.js?v=' dashboard/index.html
           grep -q 'admin_get_contractor_seat_summary' dashboard/contractors.js
+          grep -q 'admin_list_pending_contractor_invitations' dashboard/contractors.js
           grep -q 'admin-invite-contractor' dashboard/contractors.js
+          grep -q "operation: 'invite'" dashboard/contractors.js
+          grep -q "operation: 'cancel'" dashboard/contractors.js
+          grep -q 'Cancel Invitation' dashboard/contractors.js
           grep -q 'Refresh Contractors' dashboard/contractors.js
           grep -q 'complete_contractor_invitation_activation' dashboard/contractor-invite.js
           grep -q 'history.replaceState' dashboard/contractor-invite.js
@@ -113,7 +117,10 @@ jobs:
           grep -q 'SUPABASE_SERVICE_ROLE_KEY' supabase/functions/admin-invite-contractor/index.ts
           grep -q "role: 'CONTRACTOR'" supabase/functions/admin-invite-contractor/index.ts
           grep -q 'team_finalize_contractor_invitation' supabase/functions/admin-invite-contractor/index.ts
+          grep -q 'team_finalize_contractor_invitation_cancel' supabase/functions/admin-invite-contractor/index.ts
+          grep -q 'admin_begin_contractor_invitation_cancel' supabase/functions/admin-invite-contractor/index.ts
           grep -q 'inviteUserByEmail' supabase/functions/admin-invite-contractor/index.ts
+          grep -q 'deleteUser' supabase/functions/admin-invite-contractor/index.ts
       - name: Upload admin dashboard
         uses: actions/upload-artifact@v4
         with:
