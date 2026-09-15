@@ -3,6 +3,7 @@ plugins {
 }
 
 def stableTestKeystore = rootProject.file('ci/field-photo-prep-team-test.jks')
+def roomSchemaDir = file("$projectDir/schemas")
 
 android {
     namespace 'com.inandout.fieldphotoprep.team.internal'
@@ -12,8 +13,17 @@ android {
         applicationId 'com.inandout.fieldphotoprep.team.internal'
         minSdk 26
         targetSdk 36
-        versionCode 2
-        versionName '0.2-phase1-login-internal'
+        versionCode 3
+        versionName '0.3-phase3a-room-internal'
+
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments += [
+                    "room.schemaLocation": roomSchemaDir.path,
+                    "room.incremental": "true"
+                ]
+            }
+        }
     }
 
     // Public, non-production signer used only so internal test APK updates are stable.
@@ -40,4 +50,17 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
+}
+
+dependencies {
+    implementation 'androidx.room:room-runtime:2.8.5'
+    annotationProcessor 'androidx.room:room-compiler:2.8.5'
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'androidx.room:room-testing:2.8.5'
+    testImplementation 'org.robolectric:robolectric:4.16.1'
 }

@@ -41,8 +41,17 @@ jobs:
           grep -q 'Approve Reassignment' app/src/main/java/com/inandout/fieldphotoprep/team/internal/MainActivity.java
           grep -q 'Decline Reassignment' app/src/main/java/com/inandout/fieldphotoprep/team/internal/MainActivity.java
           grep -q 'Assignment receipt: Confirmed' app/src/main/java/com/inandout/fieldphotoprep/team/internal/MainActivity.java
+      - name: Run Phase 3A JVM tests
+        run: gradle :app:testDebugUnitTest
       - name: Build internal Team APK
         run: gradle :app:assembleDebug
+      - name: Verify Room v1 schema export
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCHEMA="$(find app/schemas -type f -name '1.json' -print -quit)"
+          test -n "${SCHEMA}"
+          echo "Room schema: ${SCHEMA}"
       - name: Verify Team client identity and network permission
         shell: bash
         run: |
@@ -82,9 +91,15 @@ jobs:
           if actual != expected:
               sys.exit(1)
           PY
-      - name: Upload Phase 2 contractor APK
+      - name: Upload Phase 3A contractor APK
         uses: actions/upload-artifact@v4
         with:
-          name: field-photo-prep-team-phase2-consent-apk
+          name: field-photo-prep-team-phase3a-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+      - name: Upload Room v1 schema
+        uses: actions/upload-artifact@v4
+        with:
+          name: field-photo-prep-team-room-v1-schema
+          path: app/schemas
           if-no-files-found: error
