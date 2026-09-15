@@ -4,7 +4,7 @@
 
 **Level 3 — Supabase Auth, role, organization, and seat authorization boundary.**
 
-This slice intentionally pulls forward only the smallest real Phase 8B capability needed to create a legitimate second Contractor account and complete the remaining Phase 2 reassignment/receipt smoke.
+This slice pulls forward only the smallest real Phase 8B capability needed to create a legitimate second Contractor account and complete the remaining Phase 2 reassignment/receipt smoke.
 
 Known-good rollback baseline: `5d8f0b6241c4ecb87eb0663ac6e99125334a9f26`.
 
@@ -16,32 +16,30 @@ The Admin never chooses, receives, stores, or sees the contractor password.
 
 ## Scope
 
-This slice implements only:
+Implemented in this slice:
 
-- a server-controlled Contractor seat limit;
+- server-controlled Contractor seat limit;
 - pending invitation seat reservation;
-- an Admin seat summary;
-- a narrow Admin invite form in the existing dashboard;
-- a trusted Supabase Edge Function for Auth-admin invitation work;
+- Admin seat summary and invite controls in the existing dashboard session;
+- trusted Supabase Edge Function for Auth-admin invitation work;
 - server-controlled Contractor/org Auth metadata;
-- a small contractor invitation-acceptance/password-setup page;
+- public invitation acceptance/password-setup page;
 - explicit activation after password setup;
-- assignable-user filtering so pending/unaccepted invites cannot receive work;
-- enough status truth to complete the two-Contractor Phase 2 smoke.
+- server-side assignability invariant for current and pending WO assignees;
+- enough real account lifecycle to create a second Contractor for the Phase 2 smoke.
 
-This slice deliberately does **not** implement:
+Deliberately deferred:
 
 - resend invitation;
 - cancel invitation;
+- invitation-expiry cleanup;
 - deactivation/reactivation;
 - Contractor deletion;
 - additional Admin creation;
 - commercial billing/payment;
-- arbitrary Admin seat-limit changes;
+- Admin editing of seat limits;
 - Phase 3 Room/offline behavior;
 - any V1/FPP change.
-
-Those remain in the later full Phase 8B lifecycle slice.
 
 ## Authority model
 
@@ -51,183 +49,194 @@ Those remain in the later full Phase 8B lifecycle slice.
 - invitation reservation/status;
 - active/pending seat counts;
 - caller role/org checks;
-- whether an invited account is allowed to become assignable.
+- whether a Contractor is actually assignable;
+- the work-order boundary that rejects non-assignable current/pending assignees.
 
 ### Supabase Auth owns
 
 - invited user identity;
-- email confirmation/invite session;
-- the password chosen by the invited contractor;
-- server-controlled app metadata for `CONTRACTOR` + organization.
+- invitation/email-confirmation session;
+- password chosen by the invited contractor;
+- server-controlled `CONTRACTOR` + organization app metadata.
 
-### Supabase Edge Function owns
+### Trusted Edge Function owns
 
-Only the trusted bridge that requires Auth-admin privilege:
+Only the bridge that requires Auth-admin privilege:
 
-- validate the authenticated Admin caller;
-- reserve a seat through a narrow database RPC;
-- call the real Supabase Auth Admin invite API;
-- set server-controlled contractor/org app metadata;
-- finalize or safely fail/reconcile the reservation.
+- validates the authenticated Admin caller;
+- reserves a seat through a narrow caller-scoped RPC;
+- calls Supabase Auth Admin `inviteUserByEmail`;
+- writes server-controlled Contractor/org app metadata;
+- finalizes, safely fails, or marks uncertain invitation state.
 
-The service/secret credential remains only in the trusted Edge Function environment and is never returned to or embedded in GitHub Pages, Android, or repository source.
+The service-role credential stays only in the Supabase Edge Function environment. It is never committed to GitHub or returned to GitHub Pages/Android.
 
 ### Browser owns
 
-Only requesting the action with its normal Admin access token and rendering server truth. It cannot raise the seat cap or write Auth metadata directly.
+Only name/email input, normal Admin bearer authentication, rendering server truth, and invited-user password entry. It cannot raise the seat cap, write app metadata, or directly mutate invitation records.
 
 ## Server model
 
 ### `organizations.contractor_seat_limit`
 
-Add a positive server-controlled integer seat cap. For the current internal pilot, initialize the cap to **2**, which supports the existing Contractor plus one legitimate test Contractor. There is no Admin UI to change this cap in this slice.
+Positive server-controlled integer. Internal pilot value is **2**, supporting the existing Contractor plus one legitimate test Contractor. No Admin control changes this value in this slice.
 
 ### `contractor_invitations`
 
-Minimum fields:
+Fields include invitation UUID, organization UUID, normalized email, display name, status, Auth user UUID when known, creating Admin UUID, and created/updated timestamps.
 
-- invitation UUID;
-- organization UUID;
-- normalized email;
-- display name;
-- status;
-- Auth user UUID when known;
-- creating Admin UUID;
-- created/updated timestamps.
+Statuses:
 
-Initial statuses:
+- `RESERVED` — seat reserved before Auth call;
+- `SENT` — Auth invitation/user created and Team metadata finalized;
+- `ACCEPTED` — invited contractor completed password setup and activation;
+- `FAILED` — known-safe failure with no retained Auth user; seat released;
+- `PROBLEM` — ambiguous/partial outcome; fail closed and keep the seat reserved.
 
-- `RESERVED` — seat durably reserved before calling Auth;
-- `SENT` — real Auth invitation created/sent;
-- `ACCEPTED` — invited user completed password setup and activation;
-- `FAILED` — known-safe invitation failure released the pending seat;
-- `PROBLEM` — an ambiguous/partially completed invitation requires reconciliation rather than blind duplicate invitation.
-
-Future resend/cancel/expiry/deactivation behavior is outside this slice and may extend the status model deliberately later.
-
-A same-organization email cannot have more than one live `RESERVED`/`SENT` invitation.
+A same-organization email cannot have more than one live `RESERVED`, `SENT`, or `PROBLEM` invitation.
 
 ## Seat counting
 
-`used seats = active confirmed Contractor Auth users + live RESERVED/SENT invitations`
+`used seats = active accepted Contractors + live RESERVED/SENT/PROBLEM invitations`
 
-The same invited user must never be double-counted after activation. Activation transitions the invitation to `ACCEPTED`, removing it from pending count while the now-confirmed Contractor counts as active.
+`PROBLEM` intentionally holds a seat because an ambiguous Auth outcome must not allow over-allocation.
 
-Only active/confirmed same-organization Contractors can appear in `admin_list_assignable_users()`.
+Activation changes the invitation from `SENT` to `ACCEPTED`; that removes it from pending count while the confirmed Contractor begins counting as active, so the same person is not double-counted.
+
+## Assignability invariant
+
+`private.is_assignable_contractor(user, organization)` requires:
+
+- Auth user exists and is not deleted;
+- email is confirmed;
+- account is not currently banned;
+- exact organization metadata matches;
+- role is `CONTRACTOR`;
+- there is no invitation for that Auth user still in a non-`ACCEPTED` state.
+
+This invariant is used by `admin_list_assignable_users()` and a `work_orders` trigger that validates both `assigned_user_id` and `pending_assignee_user_id`. Hiding a pending invitation in the dropdown is therefore not the security boundary; a modified client cannot assign that UUID either.
 
 ## Narrow database actions
 
-### Admin reserve invite
+- `admin_get_contractor_seat_summary()` — Admin-only seat truth.
+- `admin_reserve_contractor_invitation(email, display_name)` — Admin-only reservation under organization-row lock; rejects duplicates and seat overflow before Auth work.
+- `complete_contractor_invitation_activation()` — invited Contractor-only activation after confirmed Auth/session/password setup.
+- `team_finalize_contractor_invitation(...)` — service-role-only finalization for `SENT`, known-safe `FAILED`, or fail-closed `PROBLEM`.
 
-A narrow Admin-only RPC:
-
-- verifies authenticated `ADMIN` + organization claim;
-- normalizes and validates email/name;
-- locks the organization row while checking the cap;
-- rejects an existing Auth email or duplicate live invitation;
-- counts active Contractors + pending invitations;
-- rejects when no seat is available;
-- inserts `RESERVED` and returns invitation identity + seat summary.
-
-### Mark sent / known failure / problem
-
-Narrow server actions finalize the reserved invitation after the trusted Auth call. They never create Auth users themselves.
-
-### Contractor activation
-
-A narrow authenticated Contractor RPC runs only after the invite session has been established and password update succeeded. It verifies:
-
-- `auth.uid()` matches the invitation Auth user;
-- Auth/app metadata says `CONTRACTOR` in the same organization;
-- email is confirmed;
-- invitation is `SENT`;
-
-then changes only that invitation to `ACCEPTED`.
+`contractor_invitations` has RLS enabled and authenticated/anon users have no direct table privileges.
 
 ## Trusted invite flow
 
-The Edge Function requires a valid JWT.
-
-1. Browser sends name/email and the normal Admin Bearer token.
-2. Function verifies current caller identity/role/org from the server, not browser-provided role/org fields.
-3. Function calls the seat-reservation RPC under the Admin identity.
-4. Function uses its server-only Supabase Auth-admin credential to send `inviteUserByEmail`.
-5. It immediately sets server-controlled `app_metadata.role = CONTRACTOR` and the exact organization UUID on the returned Auth user.
-6. It marks the invitation `SENT` with that Auth UUID.
-7. If Auth reports a known-safe failure and no Auth user exists, mark `FAILED` so the seat is released.
-8. If outcome is ambiguous, attempt server-side reconciliation by email. If identity/outcome still cannot be proven, mark `PROBLEM` and do not blindly send another invite.
+1. Browser sends name/email with the normal Admin bearer token.
+2. Edge Function verifies the actual caller through Supabase Auth and requires server metadata `ADMIN` + organization.
+3. Caller-scoped client reserves a seat through the narrow Admin RPC.
+4. Service client sends the real Supabase Auth invitation.
+5. Returned Auth user gets server-controlled `role=CONTRACTOR` and exact organization UUID while preserving other app metadata.
+6. Invitation is finalized `SENT` with the Auth UUID.
+7. If the Auth call reports failure, reconciliation only accepts a user whose email **and** invitation marker match this reservation.
+8. Proven no-user failure becomes `FAILED`; ambiguous/partial outcome becomes `PROBLEM` or remains `RESERVED`; no blind duplicate invite is sent.
 
 ## Invitation acceptance
 
-A small public GitHub Pages acceptance page will:
+`dashboard/contractor-invite.html` + `contractor-invite.js`:
 
-- accept only the real Supabase invite session returned from the invite link;
-- remove Auth tokens from the visible URL as soon as they are captured;
-- verify the invited user from Supabase before showing password controls;
-- let the contractor choose their own password using the authenticated Supabase user endpoint;
-- call the narrow activation RPC after password update succeeds;
-- show success and instruct the contractor to sign in to the Team app;
-- not persist the invite access/refresh token to localStorage;
-- not expose any Admin/service secret.
+- require the real Supabase invite session;
+- remove access-token material from the visible URL immediately;
+- verify current Auth user plus Team Contractor/org/invitation metadata;
+- let the contractor choose their own password;
+- call the activation RPC only after password update succeeds;
+- require `ACCEPTED` confirmation before showing Account Ready;
+- do not store invite tokens in localStorage/sessionStorage;
+- expose no Admin/service credential.
 
-The invite redirect URL must be an allowed Supabase Auth redirect destination. The connector currently does not expose hosted Auth URL configuration, so the code may be built/staged first. If the Team GitHub Pages invite URL is not already allowed, that single provider setting is a real configuration gate and must be added before sending the first test invitation.
+The invite redirect target is:
+
+`https://timbone72-cc.github.io/field-photo-prep-team/contractor-invite.html`
+
+That URL must be allowed by hosted Supabase Auth redirect configuration. The current connector does not expose hosted Auth URL configuration, so this remains a genuine provider reality gate until the first controlled invite is attempted.
 
 ## Failure behavior
 
-- Seat full: no Auth invite attempt occurs.
-- Duplicate existing user/live invitation: fail clearly; do not create another identity.
-- Auth invite known failure: pending reservation becomes `FAILED`; seat is released.
-- Ambiguous Auth result: fail closed as `PROBLEM`; do not blind resend.
-- Metadata finalization failure after Auth user creation: preserve `PROBLEM`; account does not become assignable.
-- Invite link not accepted: remains pending and consumes a seat in this early slice. Expiry cleanup belongs to the full lifecycle implementation; the internal test invite will be completed immediately.
-- Password setup failure: account remains non-assignable; evidence/reservation is preserved.
-- Activation failure: account remains non-assignable until corrected.
+- Seat full → no Auth invitation attempt.
+- Existing Auth email/live invitation → reject; no duplicate identity.
+- Known-safe Auth failure with no created identity → `FAILED`, seat released.
+- Ambiguous Auth outcome → `PROBLEM`, seat stays reserved, no blind resend.
+- Metadata/finalization uncertainty → account remains non-assignable.
+- Unaccepted invite → remains pending and consumes a seat in this early slice.
+- Password/activation failure → account remains non-assignable; evidence is preserved.
 
-## Protected behavior
+## Applied migrations
 
-- Admin account can never become a WO assignee.
-- Seat limit is server-enforced.
-- Browser/Android never receives Auth Admin/service credentials.
-- Organization and role are server-controlled authorization facts.
-- Pending invite is not assignable.
-- Existing Admin/Contractor users and WOs are not rewritten.
-- Existing assignment receipt/reassignment rules stay unchanged.
-- V1/FPP stays untouched.
+- `20260915021612_add_contractor_invite_foundation.sql`
+- `20260915022720_index_contractor_invitation_creator.sql`
 
-## Verification plan
+Live Team development migration history matches those repository versions.
 
-Automated/server checks:
+## Deployed trusted runtime
 
-- migration/repository history match;
-- seat cap positive and server-controlled;
-- Admin same-org reserve succeeds when seat available;
-- Contractor/wrong role reserve fails;
-- duplicate live invite fails;
-- seat-full reserve fails before Auth work;
-- active + pending seat counts do not double-count;
-- pending invited user is absent from assignable users;
-- accepted confirmed Contractor appears in assignable users;
-- activation rejects wrong user/wrong org/unconfirmed user;
-- direct broad invitation-table mutation remains unavailable to browser roles;
-- Edge Function contains no committed secret and verifies Admin server-side;
-- dashboard sends only name/email + normal bearer token;
-- focused dashboard checks pass;
-- complete Admin + Android CI passes once on exact final head;
-- Supabase security/performance advisors checked after DDL.
+Supabase Edge Function:
 
-Provider/device reality gate:
+- slug: `admin-invite-contractor`
+- JWT verification: enabled
+- server-only environment credentials; no secret values committed
+- CORS restricted to the Team GitHub Pages origin
 
-1. Admin opens the real dashboard on Galaxy S22.
-2. Admin enters a disposable/test email they control and a test name.
-3. Invitation email arrives.
-4. Test account opens invite link and sets its own password.
-5. Dashboard refresh shows seat usage and the new Contractor as assignable.
-6. Reassign `TEST-0003-DASHBOARD` from the original Contractor to test Contractor.
-7. Original Contractor app refresh proves the WO disappears and receipt is reset.
-8. Admin reassigns it back.
-9. Original Contractor app receives it again and assignment receipt confirms.
-10. If practical, use the same test Contractor for one real `IN_PROGRESS` approve/decline handoff.
+## Verification evidence completed before reality gate
+
+Database/authorization checks:
+
+- current organization reports **1 of 2** Contractor seats used, 1 available — PASS;
+- first reservation fits the second seat — PASS;
+- third-seat reservation is rejected before Auth work — PASS;
+- duplicate live invitation rejected — PASS;
+- Contractor caller cannot reserve invitation — PASS;
+- authenticated browser role has no direct SELECT/INSERT/UPDATE on invitation table — PASS;
+- authenticated browser role cannot execute trusted finalize function — PASS;
+- transaction-only test proved `SENT` invitation makes a Contractor non-assignable — PASS;
+- work-order trigger rejected assignment to that pending identity — PASS;
+- activation to `ACCEPTED` restored assignability — PASS;
+- all fixture mutations rolled back; no fake Auth user or invitation persisted — PASS.
+
+Dashboard/Edge safeguards:
+
+- Admin invite controls reuse the existing governed Admin tab session rather than adding a second auth-storage path;
+- browser sends only name/email plus normal Admin bearer token;
+- invite acceptance stores no Auth token in browser storage;
+- Edge Function validates Admin caller server-side and contains no committed elevated credential value;
+- dashboard CI gates contractor-invite markers and secret/session rules.
+
+Advisor results after DDL:
+
+- introduced unindexed `created_by` foreign key was fixed by migration `20260915022720`;
+- remaining performance notices are informational unused-index notices, expected before this new path receives normal traffic;
+- security advisor reports `contractor_invitations` has RLS with no policies. This is intentional: browser roles have no direct table privileges and all browser access is through narrow RPCs;
+- pre-existing Auth leaked-password-protection warning is unchanged by this slice.
+
+## Distribution/provider reality boundary
+
+The repository’s GitHub Pages workflow deploys `dashboard/**` from **`main` only**. Therefore the real Admin invite controls and invite-acceptance page cannot be exercised on the Galaxy S22 from this isolated PR branch without adding throwaway preview infrastructure.
+
+We will not add preview infrastructure merely to satisfy the test. The merge/deploy is the smallest real distribution boundary for this feature.
+
+After exact-final-head CI and explicit Level-3 operator approval, merge/deploy may be used as the staged reality gate. If the first invite proves the Supabase redirect URL is not allowlisted, stop there, add only that provider configuration, and retry deliberately.
+
+## Post-merge Galaxy S22 reality gate
+
+1. Admin refreshes the real dashboard.
+2. Contractor section shows `1 of 2` seats used/reserved.
+3. Admin enters a disposable/test email they control and a test name.
+4. Invitation email arrives.
+5. Test account opens invitation and chooses its own password.
+6. Account reports ready; Admin taps Refresh Contractors.
+7. Seat summary becomes `2 of 2`, and new Contractor appears in assignee dropdown.
+8. Reassign `TEST-0003-DASHBOARD` from original Contractor to test Contractor.
+9. Original Contractor app refresh proves WO disappears and assignment receipt reset is visible from Admin.
+10. Reassign back to original Contractor.
+11. Original Contractor app receives it again and receipt confirms.
+12. If practical, use the same test Contractor for one real `IN_PROGRESS` approve/decline handoff.
 
 ## Merge gate
 
-Because this is Level 3, the final exact runtime head must pass the planned checks and receive explicit operator approval before merge/deployment to the governed `main` state.
+Because this is Level 3, the exact final branch head must pass Admin + Android CI and the final diff must be reviewed before the operator is asked for explicit pre-merge approval.
+
+That approval authorizes merge/deploy specifically to cross the main-only GitHub Pages distribution boundary and perform the controlled provider/device reality gate above. If reality contradicts the implementation, stop and correct only the proven issue before continuing.
