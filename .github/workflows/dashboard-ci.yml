@@ -44,10 +44,16 @@ jobs:
             echo 'localStorage is allowed only for the non-sensitive WO-number mode preference.' >&2
             exit 1
           fi
+          if grep -R -n -E 'sb_secret_[A-Za-z0-9_-]+|eyJ[A-Za-z0-9_-]{30,}' supabase/functions 2>/dev/null; then
+            echo 'Committed elevated Supabase credential/token found in Edge Function source.' >&2
+            exit 1
+          fi
       - name: Check dashboard JavaScript syntax
         run: |
           node --check dashboard/app.js
           node --check dashboard/session.js
+          node --check dashboard/contractors.js
+          node --check dashboard/contractor-invite.js
       - name: Verify refresh-safe Admin tab session
         shell: bash
         run: |
@@ -92,6 +98,22 @@ jobs:
             echo 'Dashboard must not directly PATCH work_orders; use narrow RPCs.' >&2
             exit 1
           fi
+      - name: Verify Contractor invite foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'contractors.js?v=' dashboard/index.html
+          grep -q 'admin_get_contractor_seat_summary' dashboard/contractors.js
+          grep -q 'admin-invite-contractor' dashboard/contractors.js
+          grep -q 'Refresh Contractors' dashboard/contractors.js
+          grep -q 'complete_contractor_invitation_activation' dashboard/contractor-invite.js
+          grep -q 'history.replaceState' dashboard/contractor-invite.js
+          grep -q 'team_invitation_id' dashboard/contractor-invite.js
+          grep -q 'contractor-invite.js?v=' dashboard/contractor-invite.html
+          grep -q 'SUPABASE_SERVICE_ROLE_KEY' supabase/functions/admin-invite-contractor/index.ts
+          grep -q "role: 'CONTRACTOR'" supabase/functions/admin-invite-contractor/index.ts
+          grep -q 'team_finalize_contractor_invitation' supabase/functions/admin-invite-contractor/index.ts
+          grep -q 'inviteUserByEmail' supabase/functions/admin-invite-contractor/index.ts
       - name: Upload admin dashboard
         uses: actions/upload-artifact@v4
         with:
