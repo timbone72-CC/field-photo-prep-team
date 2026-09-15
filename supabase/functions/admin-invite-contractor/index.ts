@@ -89,17 +89,48 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(400, { error: 'Request body must be valid JSON.' });
   }
 
+  const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const operation = typeof body.operation === 'string'
+    ? body.operation.trim().toLowerCase()
+    : 'invite';
+
+  if (operation === 'cancel') {
+    return handleCancel(
+      body,
+      callerOrganizationId,
+      callerClient,
+      adminClient,
+    );
+  }
+
+  if (operation !== 'invite') {
+    return jsonResponse(400, { error: 'Unsupported Contractor management operation.' });
+  }
+
+  return handleInvite(
+    body,
+    callerOrganizationId,
+    callerClient,
+    adminClient,
+  );
+});
+
+async function handleInvite(
+  body: Record<string, unknown>,
+  callerOrganizationId: string,
+  callerClient: ReturnType<typeof createClient>,
+  adminClient: ReturnType<typeof createClient>,
+) {
   const email = normalizedEmail(body.email);
   const displayName = normalizedName(body.display_name);
 
   if (!email || !displayName) {
     return jsonResponse(400, { error: 'Contractor name and email are required.' });
   }
-
-  const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
 
   const { data: reservationRows, error: reservationError } = await callerClient.rpc(
     'admin_reserve_contractor_invitation',
@@ -225,4 +256,96 @@ Deno.serve(async (req: Request) => {
       error: readableError(error, 'Invitation outcome is uncertain and requires review.'),
     });
   }
-});
+}
+
+async function handleCancel(
+  body: Record<string, unknown>,
+  callerOrganizationId: string,
+  callerClient: ReturnType<typeof createClient>,
+  adminClient: ReturnType<typeof createClient>,
+) {
+  const invitationId = typeof body.invitation_id === 'string'
+    ? body.invitation_id.trim()
+    : '';
+
+  if (!invitationId) {
+    return jsonResponse(400, { error: 'Invitation id is required.' });
+  }
+
+  const { data: beginRows, error: beginError } = await callerClient.rpc(
+    'admin_begin_contractor_invitation_cancel',
+    { p_invitation_id: invitationId },
+  );
+
+  if (beginError) {
+    return jsonResponse(400, {
+      error: readableError(beginError, 'Unable to begin invitation cancellation.'),
+    });
+  }
+
+  const pending = Array.isArray(beginRows) ? beginRows[0] : null;
+  if (!pending?.invitation_id || pending.organization_id !== callerOrganizationId) {
+    return jsonResponse(500, { error: 'The server did not return a valid cancellation target.' });
+  }
+
+  async function finalizeCancellation(outcome: 'CANCELLED' | 'PROBLEM') {
+    const { data, error } = await adminClient.rpc('team_finalize_contractor_invitation_cancel', {
+      p_invitation_id: invitationId,
+      p_outcome: outcome,
+    });
+    if (error) throw error;
+    return Array.isArray(data) ? data[0] : null;
+  }
+
+  try {
+    const targetUserId = pending.auth_user_id ? String(pending.auth_user_id) : null;
+
+    if (targetUserId) {
+      const { data: userData, error: userError } = await adminClient.auth.admin.getUserById(targetUserId);
+      const user = userData.user;
+
+      const safeUnusedIdentity =
+        !userError &&
+        user &&
+        (user.email ?? '').trim().toLowerCase() === String(pending.email).trim().toLowerCase() &&
+        !user.email_confirmed_at &&
+        !user.last_sign_in_at &&
+        user.app_metadata?.role === 'CONTRACTOR' &&
+        user.app_metadata?.organization_id === callerOrganizationId &&
+        user.user_metadata?.team_invitation_id === invitationId;
+
+      if (!safeUnusedIdentity) {
+        await finalizeCancellation('PROBLEM');
+        return jsonResponse(409, {
+          error: 'This invitation can no longer be safely cancelled as an unused account.',
+        });
+      }
+
+      const { error: deleteError } = await adminClient.auth.admin.deleteUser(targetUserId);
+      if (deleteError) {
+        await finalizeCancellation('PROBLEM');
+        return jsonResponse(500, {
+          error: readableError(deleteError, 'Unable to delete the unused invited Auth identity.'),
+        });
+      }
+    }
+
+    const finalized = await finalizeCancellation('CANCELLED');
+    return jsonResponse(200, {
+      invitation_id: invitationId,
+      email: pending.email,
+      display_name: pending.display_name,
+      status: finalized?.status ?? 'CANCELLED',
+    });
+  } catch (error) {
+    try {
+      await finalizeCancellation('PROBLEM');
+    } catch {
+      // Keep CANCELLING/PROBLEM seat reservation fail-closed when outcome is ambiguous.
+    }
+
+    return jsonResponse(500, {
+      error: readableError(error, 'Cancellation outcome is uncertain and requires review.'),
+    });
+  }
+}

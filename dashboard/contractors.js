@@ -3,6 +3,7 @@ const CONTRACTOR_INVITE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/admin-invit
 let contractorManagementReady = false;
 let contractorSeatAvailable = false;
 let contractorSeatSummary = null;
+let pendingContractorInvitations = [];
 
 const renderSignedInBeforeContractors = renderSignedIn;
 renderSignedIn = function renderSignedInWithContractors(rows, users, organizationId) {
@@ -44,6 +45,7 @@ function ensureContractorManagementUi() {
       </div>
       <p id="contractor-invite-status" class="status" role="status" aria-live="polite"></p>
     </form>
+    <div id="pending-contractor-invitations" class="work-orders" aria-live="polite"></div>
   `;
 
   createSection.parentNode.insertBefore(section, createSection);
@@ -79,23 +81,15 @@ async function refreshContractorManagement(refreshAssignees = false) {
     throw new Error('Admin permission required.');
   }
 
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_get_contractor_seat_summary`, {
-    method: 'POST',
-    headers: authHeaders(true),
-    body: '{}'
-  });
+  const [summary, pendingInvitations] = await Promise.all([
+    fetchContractorSeatSummary(),
+    fetchPendingContractorInvitations()
+  ]);
 
-  if (!response.ok) {
-    throw new Error(await readableError(response, 'Unable to load Contractor seats.'));
-  }
-
-  const rows = await response.json();
-  contractorSeatSummary = Array.isArray(rows) ? rows[0] : null;
-  if (!contractorSeatSummary) {
-    throw new Error('The server did not return Contractor seat information.');
-  }
-
+  contractorSeatSummary = summary;
+  pendingContractorInvitations = pendingInvitations;
   contractorSeatAvailable = Number(contractorSeatSummary.available_seats) > 0;
+
   const pendingCount = Number(contractorSeatSummary.pending_invitations || 0);
   const pendingText = pendingCount > 0 ? ` • ${pendingCount} pending invitation(s)` : '';
 
@@ -109,11 +103,47 @@ async function refreshContractorManagement(refreshAssignees = false) {
     inviteButton.disabled = !contractorSeatAvailable;
   }
 
+  renderPendingContractorInvitations(pendingContractorInvitations);
+
   if (refreshAssignees) {
     const users = await fetchAssignableUsers();
     assignableUsers = users;
     renderAssignableUsers(users);
   }
+}
+
+async function fetchContractorSeatSummary() {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_get_contractor_seat_summary`, {
+    method: 'POST',
+    headers: authHeaders(true),
+    body: '{}'
+  });
+
+  if (!response.ok) {
+    throw new Error(await readableError(response, 'Unable to load Contractor seats.'));
+  }
+
+  const rows = await response.json();
+  const summary = Array.isArray(rows) ? rows[0] : null;
+  if (!summary) {
+    throw new Error('The server did not return Contractor seat information.');
+  }
+  return summary;
+}
+
+async function fetchPendingContractorInvitations() {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_list_pending_contractor_invitations`, {
+    method: 'POST',
+    headers: authHeaders(true),
+    body: '{}'
+  });
+
+  if (!response.ok) {
+    throw new Error(await readableError(response, 'Unable to load pending Contractor invitations.'));
+  }
+
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows : [];
 }
 
 async function handleContractorInvite(event) {
@@ -140,6 +170,7 @@ async function handleContractorInvite(event) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        operation: 'invite',
         display_name: nameInput.value.trim(),
         email: emailInput.value.trim()
       })
@@ -164,6 +195,94 @@ async function handleContractorInvite(event) {
     );
   } finally {
     inviteButton.disabled = !contractorSeatAvailable;
+  }
+}
+
+function renderPendingContractorInvitations(invitations) {
+  const container = document.getElementById('pending-contractor-invitations');
+  if (!container) return;
+
+  container.replaceChildren();
+
+  const heading = document.createElement('h3');
+  heading.textContent = 'Pending Invitations';
+  container.append(heading);
+
+  if (!Array.isArray(invitations) || invitations.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'No pending Contractor invitations.';
+    container.append(empty);
+    return;
+  }
+
+  for (const invitation of invitations) {
+    const article = document.createElement('article');
+    article.className = 'work-order';
+
+    const title = document.createElement('h3');
+    title.textContent = invitation.display_name || 'Contractor invitation';
+
+    const email = document.createElement('p');
+    email.textContent = invitation.email;
+
+    const details = document.createElement('p');
+    details.className = 'muted';
+    details.textContent = `Status: ${invitation.status} • Sent/reserved: ${formatTimestamp(invitation.created_at)}`;
+
+    const cancelButton = document.createElement('button');
+    cancelButton.type = 'button';
+    cancelButton.className = 'secondary';
+    cancelButton.textContent = invitation.status === 'CANCELLING'
+      ? 'Cancellation Pending'
+      : 'Cancel Invitation';
+    cancelButton.disabled = invitation.status === 'CANCELLING';
+    cancelButton.addEventListener('click', () => handleContractorInvitationCancel(invitation, cancelButton));
+
+    article.append(title, email, details, cancelButton);
+    container.append(article);
+  }
+}
+
+async function handleContractorInvitationCancel(invitation, cancelButton) {
+  const label = invitation.email || invitation.display_name || 'this invitation';
+  const confirmed = window.confirm(
+    `Cancel the pending invitation to ${label}?\n\n` +
+    'If the invited account is still unused, Team will remove that disposable Auth identity and free the Contractor seat.'
+  );
+
+  if (!confirmed) return;
+
+  cancelButton.disabled = true;
+  setContractorInviteStatus(`Cancelling invitation to ${label}…`, false);
+
+  try {
+    const response = await fetch(CONTRACTOR_INVITE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        operation: 'cancel',
+        invitation_id: invitation.invitation_id
+      })
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || 'Unable to cancel Contractor invitation.');
+    }
+
+    setContractorInviteStatus(`Invitation to ${payload.email || label} cancelled. Contractor seat released.`, false);
+    await refreshContractorManagement(true);
+  } catch (error) {
+    setContractorInviteStatus(
+      error instanceof Error ? error.message : 'Unable to cancel Contractor invitation.',
+      true
+    );
+    await refreshContractorManagement(false).catch(() => {});
   }
 }
 
