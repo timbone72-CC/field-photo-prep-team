@@ -30,7 +30,7 @@ function ensureContractorManagementUi() {
   section.setAttribute('aria-labelledby', 'contractor-management-heading');
   section.innerHTML = `
     <h2 id="contractor-management-heading">Contractors</h2>
-    <p class="muted">Invite a Contractor without choosing or seeing their password. Seats and account roles are enforced by the server.</p>
+    <p class="muted">Create a Contractor setup link without choosing or seeing their password. Seats and account roles are enforced by the server.</p>
     <p id="contractor-seat-summary" class="muted">Loading Contractor seats…</p>
     <form id="contractor-invite-form" class="admin-form" autocomplete="off">
       <label>Contractor name
@@ -40,17 +40,27 @@ function ensureContractorManagementUi() {
         <input id="contractor-invite-email" type="email" required maxlength="320" autocomplete="off" placeholder="contractor@example.com">
       </label>
       <div class="row gap edit-actions">
-        <button id="contractor-invite-button" type="submit">Send Invitation</button>
+        <button id="contractor-invite-button" type="submit">Create Setup Link</button>
         <button id="contractor-refresh-button" class="secondary" type="button">Refresh Contractors</button>
       </div>
       <p id="contractor-invite-status" class="status" role="status" aria-live="polite"></p>
     </form>
+    <div id="contractor-setup-link-result" class="hidden">
+      <p><strong>Setup link ready</strong></p>
+      <p class="muted">Send this only to the intended Contractor. Anyone holding the link can finish this account setup until the link expires or is used.</p>
+      <label>One-time setup link
+        <textarea id="contractor-setup-link" rows="4" readonly></textarea>
+      </label>
+      <button id="contractor-copy-setup-link" class="secondary" type="button">Copy Setup Link</button>
+    </div>
     <div id="pending-contractor-invitations" class="work-orders" aria-live="polite"></div>
   `;
 
   createSection.parentNode.insertBefore(section, createSection);
 
   document.getElementById('contractor-invite-form').addEventListener('submit', handleContractorInvite);
+  document.getElementById('contractor-copy-setup-link').addEventListener('click', copyContractorSetupLink);
+  signOutButton.addEventListener('click', clearContractorSetupLink);
   document.getElementById('contractor-refresh-button').addEventListener('click', async () => {
     const refreshButton = document.getElementById('contractor-refresh-button');
     refreshButton.disabled = true;
@@ -159,7 +169,8 @@ async function handleContractorInvite(event) {
   }
 
   inviteButton.disabled = true;
-  setContractorInviteStatus('Sending invitation…', false);
+  clearContractorSetupLink();
+  setContractorInviteStatus('Creating setup link…', false);
 
   try {
     const response = await fetch(CONTRACTOR_INVITE_FUNCTION_URL, {
@@ -178,19 +189,29 @@ async function handleContractorInvite(event) {
 
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(payload.error || 'Unable to send Contractor invitation.');
+      throw new Error(payload.error || 'Unable to create Contractor setup link.');
     }
 
     nameInput.value = '';
     emailInput.value = '';
-    setContractorInviteStatus(
-      `Invitation sent to ${payload.email}. The seat stays reserved until account setup is completed.`,
-      false
-    );
     await refreshContractorManagement(false);
+
+    if (payload.setup_url) {
+      showContractorSetupLink(payload.setup_url);
+      setContractorInviteStatus(
+        `Setup link created for ${payload.email}. Copy it and send it directly to the Contractor.`,
+        false
+      );
+    } else {
+      clearContractorSetupLink();
+      setContractorInviteStatus(
+        `Contractor invitation created for ${payload.email}, but this server version did not return a setup link.`,
+        false
+      );
+    }
   } catch (error) {
     setContractorInviteStatus(
-      error instanceof Error ? error.message : 'Unable to send Contractor invitation.',
+      error instanceof Error ? error.message : 'Unable to create Contractor setup link.',
       true
     );
   } finally {
@@ -228,7 +249,7 @@ function renderPendingContractorInvitations(invitations) {
 
     const details = document.createElement('p');
     details.className = 'muted';
-    details.textContent = `Status: ${invitation.status} • Sent/reserved: ${formatTimestamp(invitation.created_at)}`;
+    details.textContent = `Status: ${displayContractorInvitationStatus(invitation.status)} • Created: ${formatTimestamp(invitation.created_at)}`;
 
     const cancelButton = document.createElement('button');
     cancelButton.type = 'button';
@@ -284,6 +305,43 @@ async function handleContractorInvitationCancel(invitation, cancelButton) {
     );
     await refreshContractorManagement(false).catch(() => {});
   }
+}
+
+function showContractorSetupLink(setupUrl) {
+  const container = document.getElementById('contractor-setup-link-result');
+  const field = document.getElementById('contractor-setup-link');
+  if (!container || !field) return;
+  field.value = setupUrl;
+  container.classList.remove('hidden');
+}
+
+function clearContractorSetupLink() {
+  const container = document.getElementById('contractor-setup-link-result');
+  const field = document.getElementById('contractor-setup-link');
+  if (field) field.value = '';
+  if (container) container.classList.add('hidden');
+}
+
+async function copyContractorSetupLink() {
+  const field = document.getElementById('contractor-setup-link');
+  if (!field || !field.value) {
+    setContractorInviteStatus('Create a setup link first.', true);
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(field.value);
+    setContractorInviteStatus('Setup link copied. Send it directly to the intended Contractor.', false);
+  } catch {
+    field.focus();
+    field.select();
+    setContractorInviteStatus('Copy was blocked by the browser. The full setup link is selected so you can copy it manually.', true);
+  }
+}
+
+function displayContractorInvitationStatus(status) {
+  if (status === 'SENT') return 'SETUP LINK ISSUED';
+  return status || 'UNKNOWN';
 }
 
 function setContractorInviteStatus(message, isError) {
