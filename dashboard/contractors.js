@@ -192,18 +192,23 @@ async function handleContractorInvite(event) {
       throw new Error(payload.error || 'Unable to create Contractor setup link.');
     }
 
-    if (!payload.setup_url) {
-      throw new Error('Team created the Contractor account but did not return a usable setup link.');
-    }
-
     nameInput.value = '';
     emailInput.value = '';
     await refreshContractorManagement(false);
-    showContractorSetupLink(payload.setup_url);
-    setContractorInviteStatus(
-      `Setup link created for ${payload.email}. Copy it and send it directly to the Contractor.`,
-      false
-    );
+
+    if (payload.setup_url) {
+      showContractorSetupLink(payload.setup_url);
+      setContractorInviteStatus(
+        `Setup link created for ${payload.email}. Copy it and send it directly to the Contractor.`,
+        false
+      );
+    } else {
+      clearContractorSetupLink();
+      setContractorInviteStatus(
+        `Contractor invitation created for ${payload.email}, but this server version did not return a setup link.`,
+        false
+      );
+    }
   } catch (error) {
     setContractorInviteStatus(
       error instanceof Error ? error.message : 'Unable to create Contractor setup link.',
