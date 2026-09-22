@@ -189,30 +189,29 @@ async function handleInvite(
   }
 
   try {
-    const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
+    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+      type: 'invite',
       email,
-      {
+      options: {
         redirectTo: INVITE_REDIRECT_URL,
         data: {
           display_name: displayName,
           team_invitation_id: invitationId,
         },
       },
-    );
+    });
 
-    let invitedUser = inviteData.user;
+    const invitedUser = linkData.user;
+    const setupUrl = linkData.properties?.action_link ?? '';
 
-    if (inviteError || !invitedUser) {
-      invitedUser = await reconcileOwnInvite();
-      if (!invitedUser) {
-        await finalize('FAILED', null);
-        return jsonResponse(400, {
-          error: readableError(inviteError, 'Supabase did not create the Contractor invitation.'),
-        });
-      }
+    if (invitedUser) {
+      authUserId = invitedUser.id;
     }
 
-    authUserId = invitedUser.id;
+    if (linkError || !invitedUser || !setupUrl) {
+      throw linkError ?? new Error('Supabase did not return a usable Contractor setup link.');
+    }
+
     const updatedUser = await applyTeamMetadata(invitedUser);
     authUserId = updatedUser.id;
     const finalized = await finalize('SENT', authUserId);
@@ -222,6 +221,7 @@ async function handleInvite(
       email,
       display_name: displayName,
       status: finalized?.status ?? 'SENT',
+      setup_url: setupUrl,
       seat_limit: reservation.seat_limit,
       used_seats: reservation.used_seats,
       available_seats: reservation.available_seats,
@@ -234,26 +234,20 @@ async function handleInvite(
           authUserId = reconciled.id;
           const updatedUser = await applyTeamMetadata(reconciled);
           authUserId = updatedUser.id;
-          const finalized = await finalize('SENT', authUserId);
-          return jsonResponse(200, {
-            invitation_id: invitationId,
-            email,
-            display_name: displayName,
-            status: finalized?.status ?? 'SENT',
-            seat_limit: reservation.seat_limit,
-            used_seats: reservation.used_seats,
-            available_seats: reservation.available_seats,
-          });
         }
       }
 
-      await finalize('PROBLEM', authUserId);
+      if (authUserId) {
+        await finalize('PROBLEM', authUserId);
+      } else {
+        await finalize('FAILED', null);
+      }
     } catch {
       // The RESERVED row itself remains fail-closed and continues to hold the seat.
     }
 
-    return jsonResponse(500, {
-      error: readableError(error, 'Invitation outcome is uncertain and requires review.'),
+    return jsonResponse(authUserId ? 500 : 400, {
+      error: readableError(error, 'Setup link generation outcome is uncertain and requires review.'),
     });
   }
 }

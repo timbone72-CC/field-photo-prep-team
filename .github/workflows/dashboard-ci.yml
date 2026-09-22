@@ -119,7 +119,16 @@ jobs:
           grep -q 'team_finalize_contractor_invitation' supabase/functions/admin-invite-contractor/index.ts
           grep -q 'team_finalize_contractor_invitation_cancel' supabase/functions/admin-invite-contractor/index.ts
           grep -q 'admin_begin_contractor_invitation_cancel' supabase/functions/admin-invite-contractor/index.ts
-          grep -q 'inviteUserByEmail' supabase/functions/admin-invite-contractor/index.ts
+          grep -q 'generateLink' supabase/functions/admin-invite-contractor/index.ts
+          grep -q "type: 'invite'" supabase/functions/admin-invite-contractor/index.ts
+          grep -q 'setup_url' supabase/functions/admin-invite-contractor/index.ts
+          grep -q 'Copy Setup Link' dashboard/contractors.js
+          grep -q 'navigator.clipboard.writeText' dashboard/contractors.js
+          grep -q 'contractor-setup-link-result' dashboard/contractors.js
+          if grep -q 'inviteUserByEmail' supabase/functions/admin-invite-contractor/index.ts; then
+            echo 'Contractor onboarding must not depend on Supabase email delivery.' >&2
+            exit 1
+          fi
           grep -q 'deleteUser' supabase/functions/admin-invite-contractor/index.ts
       - name: Upload admin dashboard
         uses: actions/upload-artifact@v4
