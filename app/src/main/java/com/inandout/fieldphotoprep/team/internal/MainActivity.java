@@ -16,6 +16,7 @@ import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,6 +28,8 @@ public final class MainActivity extends Activity {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final SupabaseApi api = new SupabaseApi();
 
+    private AssignmentRepository assignmentRepository;
+    private SecureSessionStore sessionStore;
     private TextView screenTitle;
     private TextView screenIntro;
     private EditText emailInput;
@@ -46,8 +49,14 @@ public final class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        TeamDatabase database = TeamDatabase.getInstance(this);
+        assignmentRepository = new AssignmentRepository(
+                api,
+                new RoomAssignmentStore(database.cachedWorkOrderDao()));
+        sessionStore = new SecureSessionStore(this);
         setContentView(buildContent());
-        showSignedOut();
+        showSignedOutUi(getString(R.string.signed_out));
+        restoreSavedSession();
     }
 
     private View buildContent() {
@@ -116,7 +125,7 @@ public final class MainActivity extends Activity {
 
         signOutButton = new Button(this);
         signOutButton.setText(R.string.sign_out);
-        signOutButton.setOnClickListener(v -> showSignedOut());
+        signOutButton.setOnClickListener(v -> signOut());
         signOutButton.setLayoutParams(matchWrap());
         root.addView(signOutButton);
 
@@ -144,6 +153,47 @@ public final class MainActivity extends Activity {
         return scroll;
     }
 
+    private void restoreSavedSession() {
+        executor.execute(() -> {
+            SupabaseApi.AuthSession saved = sessionStore.load();
+            if (saved == null) {
+                return;
+            }
+
+            List<SupabaseApi.WorkOrder> cached = assignmentRepository.loadCached(saved);
+            mainHandler.post(() -> showSignedIn(
+                    saved,
+                    cached,
+                    false,
+                    cached.isEmpty()
+                            ? "Reconnecting to Team…"
+                            : "Showing downloaded assignments while reconnecting…"));
+
+            try {
+                SupabaseApi.AuthSession refreshed = api.refreshSession(saved.refreshToken);
+                sessionStore.save(refreshed);
+                List<SupabaseApi.WorkOrder> workOrders = assignmentRepository.refresh(refreshed);
+                mainHandler.post(() -> showSignedIn(
+                        refreshed,
+                        workOrders,
+                        true,
+                        getString(R.string.assignments_refreshed)));
+            } catch (IOException error) {
+                postStatus("Offline — showing last downloaded assignments.");
+            } catch (SupabaseApi.ApiException error) {
+                if (error.isAuthenticationRejection()) {
+                    sessionStore.clear();
+                    mainHandler.post(() -> showSignedOutUi(
+                            "Team session expired. Sign in again; downloaded work was preserved."));
+                } else {
+                    postStatus("Unable to refresh right now — showing last downloaded assignments.");
+                }
+            } catch (Exception error) {
+                postStatus("Unable to refresh right now — showing last downloaded assignments.");
+            }
+        });
+    }
+
     private void beginSignIn() {
         String email = emailInput.getText().toString().trim();
         String password = passwordInput.getText().toString();
@@ -156,21 +206,14 @@ public final class MainActivity extends Activity {
         executor.execute(() -> {
             try {
                 SupabaseApi.AuthSession session = api.signIn(email, password);
+                sessionStore.save(session);
                 postStatus(getString(R.string.loading_work));
-                List<SupabaseApi.WorkOrder> workOrders = api.fetchWorkOrders(session.accessToken);
-
-                if ("CONTRACTOR".equals(session.role)) {
-                    for (SupabaseApi.WorkOrder workOrder : workOrders) {
-                        if (session.userId.equals(workOrder.assignedUserId)
-                                && !"CANCELLED".equals(workOrder.fieldStatus)) {
-                            api.acknowledgeAssignmentReceived(session.accessToken, workOrder.id);
-                        }
-                    }
-                    workOrders = api.fetchWorkOrders(session.accessToken);
-                }
-
-                List<SupabaseApi.WorkOrder> finalWorkOrders = workOrders;
-                mainHandler.post(() -> showSignedIn(session, finalWorkOrders));
+                List<SupabaseApi.WorkOrder> workOrders = assignmentRepository.refresh(session);
+                mainHandler.post(() -> showSignedIn(
+                        session,
+                        workOrders,
+                        true,
+                        "Signed in successfully."));
             } catch (Exception error) {
                 String message = safeMessage(error, "Sign-in failed.");
                 mainHandler.post(() -> {
@@ -181,9 +224,13 @@ public final class MainActivity extends Activity {
         });
     }
 
-    private void showSignedIn(SupabaseApi.AuthSession session, List<SupabaseApi.WorkOrder> workOrders) {
+    private void showSignedIn(
+            SupabaseApi.AuthSession session,
+            List<SupabaseApi.WorkOrder> workOrders,
+            boolean serverVerified,
+            String message) {
         currentSession = session;
-        setLoading(false, "Signed in successfully.");
+        setLoading(false, message);
         passwordInput.setText("");
         emailInput.setVisibility(View.GONE);
         passwordInput.setVisibility(View.GONE);
@@ -206,7 +253,12 @@ public final class MainActivity extends Activity {
         }
 
         identityText.setText("Account: " + session.email + "\nRole: " + session.role);
-        updateRlsProof(session, workOrders);
+        if (serverVerified) {
+            updateRlsProof(session, workOrders);
+        } else {
+            rlsText.setText("");
+            rlsText.setVisibility(View.GONE);
+        }
         renderWorkOrders(workOrders);
     }
 
@@ -223,42 +275,56 @@ public final class MainActivity extends Activity {
 
         executor.execute(() -> {
             try {
-                List<SupabaseApi.WorkOrder> workOrders = api.fetchWorkOrders(session.accessToken);
-                if ("CONTRACTOR".equals(session.role)) {
-                    for (SupabaseApi.WorkOrder workOrder : workOrders) {
-                        if (session.userId.equals(workOrder.assignedUserId)
-                                && !"CANCELLED".equals(workOrder.fieldStatus)) {
-                            api.acknowledgeAssignmentReceived(session.accessToken, workOrder.id);
-                        }
-                    }
-                    workOrders = api.fetchWorkOrders(session.accessToken);
+                SupabaseApi.AuthSession refreshed = api.refreshSession(session.refreshToken);
+                sessionStore.save(refreshed);
+                List<SupabaseApi.WorkOrder> workOrders = assignmentRepository.refresh(refreshed);
+                mainHandler.post(() -> {
+                    progress.setVisibility(View.GONE);
+                    refreshAssignmentsButton.setEnabled(true);
+                    showSignedIn(
+                            refreshed,
+                            workOrders,
+                            true,
+                            getString(R.string.assignments_refreshed));
+                });
+            } catch (IOException error) {
+                mainHandler.post(() -> {
+                    progress.setVisibility(View.GONE);
+                    refreshAssignmentsButton.setEnabled(true);
+                    statusText.setText("Offline — downloaded assignments remain available.");
+                });
+            } catch (SupabaseApi.ApiException error) {
+                if (error.isAuthenticationRejection()) {
+                    sessionStore.clear();
+                    mainHandler.post(() -> showSignedOutUi(
+                            "Team session expired. Sign in again; downloaded work was preserved."));
+                } else {
+                    showRefreshFailure(safeMessage(error, "Unable to refresh assignments."));
                 }
-
-                List<SupabaseApi.WorkOrder> finalWorkOrders = workOrders;
-                mainHandler.post(() -> {
-                    progress.setVisibility(View.GONE);
-                    refreshAssignmentsButton.setEnabled(true);
-                    updateRlsProof(session, finalWorkOrders);
-                    renderWorkOrders(finalWorkOrders);
-                    statusText.setText(R.string.assignments_refreshed);
-                });
             } catch (Exception error) {
-                String message = safeMessage(error, "Unable to refresh assignments.");
-                mainHandler.post(() -> {
-                    progress.setVisibility(View.GONE);
-                    refreshAssignmentsButton.setEnabled(true);
-                    statusText.setText(message);
-                });
+                showRefreshFailure(safeMessage(error, "Unable to refresh assignments."));
             }
+        });
+    }
+
+    private void showRefreshFailure(String message) {
+        mainHandler.post(() -> {
+            progress.setVisibility(View.GONE);
+            refreshAssignmentsButton.setEnabled(true);
+            statusText.setText(message);
         });
     }
 
     private void updateRlsProof(SupabaseApi.AuthSession session, List<SupabaseApi.WorkOrder> workOrders) {
         boolean foreignAssignmentReturned = false;
+        boolean foreignOrganizationReturned = false;
         boolean controlReturned = false;
         for (SupabaseApi.WorkOrder workOrder : workOrders) {
             if (!session.userId.equals(workOrder.assignedUserId)) {
                 foreignAssignmentReturned = true;
+            }
+            if (!session.organizationId.equals(workOrder.organizationId)) {
+                foreignOrganizationReturned = true;
             }
             if (RLS_CONTROL_WO.equals(workOrder.woNumber)) {
                 controlReturned = true;
@@ -267,6 +333,7 @@ public final class MainActivity extends Activity {
 
         if ("CONTRACTOR".equals(session.role)
                 && !foreignAssignmentReturned
+                && !foreignOrganizationReturned
                 && !controlReturned
                 && !workOrders.isEmpty()) {
             rlsText.setText("RLS CHECK: PASS\n"
@@ -440,29 +507,43 @@ public final class MainActivity extends Activity {
         statusText.setText(accept ? "Approving reassignment…" : "Declining reassignment…");
         executor.execute(() -> {
             try {
-                api.respondReassignment(session.accessToken, workOrderId, accept);
-                List<SupabaseApi.WorkOrder> workOrders = api.fetchWorkOrders(session.accessToken);
+                SupabaseApi.AuthSession refreshed = api.refreshSession(session.refreshToken);
+                sessionStore.save(refreshed);
+                api.respondReassignment(refreshed.accessToken, workOrderId, accept);
+                List<SupabaseApi.WorkOrder> workOrders = assignmentRepository.refresh(refreshed);
                 mainHandler.post(() -> {
                     progress.setVisibility(View.GONE);
                     refreshAssignmentsButton.setEnabled(true);
-                    updateRlsProof(session, workOrders);
-                    renderWorkOrders(workOrders);
-                    statusText.setText(accept
-                            ? "Reassignment approved. This WO has been released to the new assignee."
-                            : "Reassignment declined. This WO remains assigned to you.");
+                    showSignedIn(
+                            refreshed,
+                            workOrders,
+                            true,
+                            accept
+                                    ? "Reassignment approved. This WO has been released to the new assignee."
+                                    : "Reassignment declined. This WO remains assigned to you.");
                 });
+            } catch (IOException error) {
+                showRefreshFailure("Network required to respond to reassignment.");
+            } catch (SupabaseApi.ApiException error) {
+                if (error.isAuthenticationRejection()) {
+                    sessionStore.clear();
+                    mainHandler.post(() -> showSignedOutUi(
+                            "Team session expired. Sign in again; downloaded work was preserved."));
+                } else {
+                    showRefreshFailure(safeMessage(error, "Unable to respond to reassignment."));
+                }
             } catch (Exception error) {
-                String message = safeMessage(error, "Unable to respond to reassignment.");
-                mainHandler.post(() -> {
-                    progress.setVisibility(View.GONE);
-                    refreshAssignmentsButton.setEnabled(true);
-                    statusText.setText(message);
-                });
+                showRefreshFailure(safeMessage(error, "Unable to respond to reassignment."));
             }
         });
     }
 
-    private void showSignedOut() {
+    private void signOut() {
+        sessionStore.clear();
+        showSignedOutUi(getString(R.string.signed_out));
+    }
+
+    private void showSignedOutUi(String message) {
         currentSession = null;
         passwordInput.setText("");
         screenTitle.setText(R.string.phase1_title);
@@ -475,7 +556,7 @@ public final class MainActivity extends Activity {
         refreshAssignmentsButton.setVisibility(View.GONE);
         refreshAssignmentsButton.setEnabled(true);
         progress.setVisibility(View.GONE);
-        statusText.setText(R.string.signed_out);
+        statusText.setText(message);
         identityText.setText("");
         identityText.setVisibility(View.GONE);
         rlsText.setText("");
