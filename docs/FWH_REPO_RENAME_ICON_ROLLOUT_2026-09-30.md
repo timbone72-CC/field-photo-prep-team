@@ -54,3 +54,48 @@ In a separate **Level 2** FWH-only PR from then-current main, after confirming o
 Do not modify FPP; do not perform a repo rename while an unknown Pages/Auth redirect could strand pending invites. No unapproved Level-3 deployment. No replacement Android applicationId or signer. Do not treat a green fake/unit test as a successful real invite redirect. Existing PR #17/#20 retain their own gate status.
 
 Completion requires: canonical repo identity is `timbone72-CC/field-work-hub`; ruleset active and enforced; real Pages URL plus controlled invite redirect tested if active; historical branches/PRs available; FWH Internal installs over its previous package with the approved distinguishable icon; dashboard displays Field Work Hub Admin; the original FPP is untouched. Record each real test and rollout SHA once in a post-change implementation record.
+
+## Stage 1 checkpoint — 2026-09-30
+
+### Classification and authoritative lines
+
+Goal: verify the existing contractor setup workflow and prepare the new address before renaming. This checkpoint is a **Level 1 documentation update**, scope key `docs-fwh-pre-rename-setup-evidence`, branch `docs/fwh-pre-rename-setup-evidence`, from governed main `f8491f4d58f5fb694c15b55bb1c739cfc251e913`. Rollback: revert only this document update. Required packs: AGENTS, GOVERNANCE, PROJECT_PROFILE, RULE_INDEX, CHANGE_CONTROL, TESTING, INTEGRATION, approved roadmap contractor lifecycle/Phase 2/Phase 8B, phase-staging doctrine and PR #20's setup-link implementation record.
+
+PR #20 remains the sole Level 3 onboarding implementation line, `feat/contractor-manual-setup-link-backend`, head `c7938e900261471a8102fd491c30a539934a05ca`. PR #17 remains independent. No Android, dashboard, Edge Function source, Auth configuration, seat limit or repository name was changed by this checkpoint.
+
+### Verified provider and GitHub state
+
+- Team Supabase `vyocaujuwrivoqynvitm` was observed `INACTIVE`. It was resumed to perform the requested verification and then confirmed `ACTIVE_HEALTHY`; existing invitation schema and records were readable after restoration. No project was created, plan upgraded or migration applied. The separate original FPP project was untouched.
+- Deployed `admin-invite-contractor` **version 3**, JWT verification **true**, has byte-for-byte identical `index.ts` to PR #20's exact head (source blob `a8055b75768c88ef98dddd7dc7921b61c6786cb0`). Deployment is therefore already present despite PR #20's older pending-deployment wording. No redeployment was needed or performed.
+- Exact PR #20 head has successful `build` and `dashboard` checks: Actions runs `35673493268` and `35673493265`. This is automated evidence, not a passed real contractor setup.
+- Latest successful Pages deployment: [run 35673348937](https://github.com/timbone72-CC/field-photo-prep-team/actions/runs/35673348937), source `7f495ba06d5d3c6f7761416034708c158b7875d9`. Its deploy-job log reports `https://timbone72-cc.github.io/field-photo-prep-team/`. Comparison to current main shows no subsequent `dashboard/**` or `pages.yml` changes. This proves the deployed revision/URL, not current browser reachability or successful invitation activation.
+- Live ruleset `24245891`, **FWH Main Protection**, is active on the default branch, has no bypass actors, requires a PR and resolved discussions, blocks deletion/force push, and requires the GitHub Actions contexts **governance**, **build**, **dashboard** (integration ID `15368`).
+- Read-only invitation check at **2026-09-30T13:40:45Z**: 1 `CANCELLED`, 4 `FAILED`; **0** `RESERVED/SENT/PROBLEM/CANCELLING`; **0** pending rows with confirmed Auth identities; **0** unconfirmed Auth accounts carrying a Team invitation marker. No current tracked pending invitation needs the old path. Recheck immediately before rename; any new setup test creates a fresh dependency until completed.
+- `timbone72-CC/field-work-hub` currently returns repository-not-found. This is not a reservation or proof GitHub's rename form will accept the name.
+
+### Prepared address mapping — not yet applied
+
+| Surface | Current | Proposed after rename |
+| --- | --- | --- |
+| Repository | `https://github.com/timbone72-CC/field-photo-prep-team` | `https://github.com/timbone72-CC/field-work-hub` |
+| Admin Pages | `https://timbone72-cc.github.io/field-photo-prep-team/` | `https://timbone72-cc.github.io/field-work-hub/` |
+| Contractor setup redirect | `https://timbone72-cc.github.io/field-photo-prep-team/contractor-invite.html` | `https://timbone72-cc.github.io/field-work-hub/contractor-invite.html` |
+
+The proposed Pages addresses are **not live or confirmed allowlisted**. The Edge Function supports `TEAM_INVITE_REDIRECT_URL`, but the connector cannot read its configured value or the hosted Auth Site URL/additional redirect list. Do not infer the effective live redirect from the source fallback alone. Public-page retrieval was unavailable through the search tool; that result is not an HTTP 404 or a failed setup test.
+
+### Narrow Level 3 cutover plan for the next gate
+
+1. Inspect Team's hosted Auth URL configuration and the effective invitation redirect. Record only these non-secret URL values. Preserve every existing unrelated callback; do not copy the original FPP project's settings.
+2. Preauthorize the **exact proposed contractor setup URL** while retaining the current allowed setup URL. Keep the effective invite destination on the old working path until the new page is deployed and verified. This is preparation, not a premature cutover.
+3. Complete PR #20's existing real gate on the current site: Admin creates/copies one setup link for an operator-controlled disposable second Contractor, that Contractor chooses their own password, activation reports `ACCEPTED`, Admin can assign them, and Android sign-in succeeds. Never send an email automatically or save the credential-bearing link/password in source, PRs or browser storage. Preserve the remaining Phase 2 reassignment/receipt gate and explicit Level 3 merge approval.
+4. Before rename, recheck pending invitation/Auth counts and pause new invitation issuance for the cutover. Finish legitimate pending setups first. Do not assume timestamp age proves expiration or cancel a used identity. A remaining unresolved/confirmed-but-unactivated setup blocks rename.
+5. After operator approval of this concrete hosting/Auth cutover, rename the same repository, deploy Pages at the new path, and verify both Admin and setup assets. Then change the explicit Team invitation redirect to the proposed setup URL and reconcile PR #20's fallback in its owning implementation line. If the Site URL uses the old Admin path, change it to the new Admin URL at this same verified cutover. Keep the Pages CORS origin `https://timbone72-cc.github.io` unchanged.
+6. Verify a real newly issued setup link targets the new page and activates correctly, then verify preserved repository ID `1368673158`, history/PRs/branches/ruleset/checks and update the developer clone's origin. For a failed cutover, stop issuance, restore prior Team URL settings and old repository/Pages path, redeploy the previously verified dashboard revision, and retest before use. Renaming back alone is not evidence of recovery.
+
+GitHub's [rename documentation](https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository) explicitly excludes project-site URLs from repository redirects. Supabase's [redirect documentation](https://supabase.com/docs/guides/auth/redirect-urls) requires the requested redirect to match the configured allowed URLs.
+
+### Exact handoff
+
+**Status: preflight evidence recorded; end-to-end setup and live URL preparation still BLOCKED on browser/provider access.** The backend resume and deployed-source parity are PASS. The current link's effective destination, hosted Auth allowlist, new URL preauthorization, real second-Contractor activation/Android sign-in and remaining Phase 2 smoke are not claimed as passed.
+
+Next action: obtain approval for browser fallback because the connectors do not expose the hosted redirect settings, then inspect Team's current settings and perform only the preparation above before the repository rename. Do not rename, switch the effective redirect early, merge PR #20/#17, or incorporate the icon at this checkpoint.
