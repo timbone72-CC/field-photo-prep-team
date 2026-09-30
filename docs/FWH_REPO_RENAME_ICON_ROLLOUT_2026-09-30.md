@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-30  
 Request: Rename the **separate Team repository** from `timbone72-CC/field-photo-prep-team` to **`timbone72-CC/field-work-hub`**; adopt the operator-approved FWH hub/network icon so Android users cannot confuse FWH with the original Field Photo Prep (FPP).  
-This document: **Level 1 planning only**. It does not perform the GitHub rename, deploy links or change an APK. The execution steps below must observe their own risk/approval gates.
+This document: **Level 1 planning and status record**. It does not perform the GitHub rename, deploy links or change an APK. The execution steps below must observe their own risk/approval gates.
 
 ## Protected identities and current truth
 
@@ -57,6 +57,8 @@ Completion requires: canonical repo identity is `timbone72-CC/field-work-hub`; r
 
 ## Stage 1 checkpoint — 2026-09-30
 
+Historical preflight checkpoint; the later URL configuration checkpoint below supersedes its browser-access handoff and unknown hosted URL settings.
+
 ### Classification and authoritative lines
 
 Goal: verify the existing contractor setup workflow and prepare the new address before renaming. This checkpoint is a **Level 1 documentation update**, scope key `docs-fwh-pre-rename-setup-evidence`, branch `docs/fwh-pre-rename-setup-evidence`, from governed main `f8491f4d58f5fb694c15b55bb1c739cfc251e913`. Rollback: revert only this document update. Required packs: AGENTS, GOVERNANCE, PROJECT_PROFILE, RULE_INDEX, CHANGE_CONTROL, TESTING, INTEGRATION, approved roadmap contractor lifecycle/Phase 2/Phase 8B, phase-staging doctrine and PR #20's setup-link implementation record.
@@ -81,7 +83,7 @@ PR #20 remains the sole Level 3 onboarding implementation line, `feat/contractor
 | Admin Pages | `https://timbone72-cc.github.io/field-photo-prep-team/` | `https://timbone72-cc.github.io/field-work-hub/` |
 | Contractor setup redirect | `https://timbone72-cc.github.io/field-photo-prep-team/contractor-invite.html` | `https://timbone72-cc.github.io/field-work-hub/contractor-invite.html` |
 
-The proposed Pages addresses are **not live or confirmed allowlisted**. The Edge Function supports `TEAM_INVITE_REDIRECT_URL`, but the connector cannot read its configured value or the hosted Auth Site URL/additional redirect list. Do not infer the effective live redirect from the source fallback alone. Public-page retrieval was unavailable through the search tool; that result is not an HTTP 404 or a failed setup test.
+At this preflight checkpoint, the proposed Pages addresses were **not live or confirmed allowlisted**. The Edge Function supports `TEAM_INVITE_REDIRECT_URL`, but the connector cannot read its configured value or the hosted Auth Site URL/additional redirect list. Do not infer the effective live redirect from the source fallback alone. Public-page retrieval was unavailable through the search tool; that result is not an HTTP 404 or a failed setup test.
 
 ### Narrow Level 3 cutover plan for the next gate
 
@@ -94,8 +96,40 @@ The proposed Pages addresses are **not live or confirmed allowlisted**. The Edge
 
 GitHub's [rename documentation](https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository) explicitly excludes project-site URLs from repository redirects. Supabase's [redirect documentation](https://supabase.com/docs/guides/auth/redirect-urls) requires the requested redirect to match the configured allowed URLs.
 
-### Exact handoff
+### Preflight handoff — superseded by the checkpoint below
 
 **Status: preflight evidence recorded; end-to-end setup and live URL preparation still BLOCKED on browser/provider access.** The backend resume and deployed-source parity are PASS. The current link's effective destination, hosted Auth allowlist, new URL preauthorization, real second-Contractor activation/Android sign-in and remaining Phase 2 smoke are not claimed as passed.
 
 Next action: obtain approval for browser fallback because the connectors do not expose the hosted redirect settings, then inspect Team's current settings and perform only the preparation above before the repository rename. Do not rename, switch the effective redirect early, merge PR #20/#17, or incorporate the icon at this checkpoint.
+
+## URL configuration checkpoint — 2026-09-30
+
+### Classification and evidence boundary
+
+Goal: record Team URL preparation and the next real setup-link gate. This is a **Level 1 documentation update**, scope key `docs-fwh-url-configuration-evidence`, authoritative branch `docs/fwh-url-configuration-checkpoint`, from main `8ea300a3ef43f8f65bf43699ebad7dbdc992b588`. Required packs: AGENTS, GOVERNANCE, PROJECT_PROFILE, RULE_INDEX, CHANGE_CONTROL, TESTING, INTEGRATION, contractor lifecycle/Phase 2/Phase 8 of the approved roadmap, phase-staging doctrine and PR #20's implementation record. Only this rollout record changes in Git; rollback is a narrow revert of this documentation update.
+
+The Auth/hosting preparation remains part of the existing Level 3 rollout plan. Browser fallback was approved, and the operator reported completing manual Supabase portal sign-in. Browser control and uploaded-screenshot access then became unavailable. The hosted configuration below is **operator-reported save/list evidence**, not an independent authenticated browser/API readback or a passed invite activation.
+
+### Team settings reported by the operator
+
+Project: `vyocaujuwrivoqynvitm`. The operator supplied its exact Auth URL Configuration page, reported Site URL `http://localhost:3000`, and reported an empty Redirect URLs list.
+
+| Setting | Reported saved value |
+| --- | --- |
+| Site URL | `https://timbone72-cc.github.io/field-photo-prep-team/` |
+| Additional redirect — existing setup page | `https://timbone72-cc.github.io/field-photo-prep-team/contractor-invite.html` |
+| Additional redirect — prepared FWH setup page | `https://timbone72-cc.github.io/field-work-hub/contractor-invite.html` |
+
+The operator confirmed both separate redirect entries appeared at **2026-09-30T18:31:19Z** and confirmed saving the current Admin Site URL at **2026-09-30T18:34:59Z**. The new setup URL is preauthorized by that report; its new Pages path has not been deployed or tested. The effective `TEAM_INVITE_REDIRECT_URL` remains unverified. No Edge Function source/environment, repository name, Android package/signer, role/org/seat rule or original FPP surface was changed by this checkpoint.
+
+Earlier in this session, the current public contractor setup page rendered its valid-link-required guard when opened without a setup credential. That proves the existing asset loads and handles a missing link; it does not prove a real invite redirect, password setup or activation.
+
+### Current handoff and rollback
+
+PR #20 remains open/draft/unmerged at `c7938e900261471a8102fd491c30a539934a05ca`, on `feat/contractor-manual-setup-link-backend`, and remains the sole onboarding implementation line. PR #17 is independent. The repository remains `timbone72-CC/field-photo-prep-team`, stable ID `1368673158`.
+
+Next gate: open the existing live Admin page, sign in as the existing Team Admin, and use one operator-controlled disposable second Contractor account through PR #20's existing workflow. Verify newly issued link delivery without SMTP, its actual redirect to the current setup page, contractor-chosen password, `ACCEPTED`, assignability and Android sign-in; then retain the remaining Phase 2 reassignment/receipt smoke. Stop on an unexpected redirect, Auth/seat result or missing controlled test identity. Store no test email, credential-bearing link or password in this public record. Real setup and Android gates remain **PENDING**.
+
+Keep the effective invite destination on the current path until the renamed Pages site is deployed and verified. Before rename, independently reconcile hosted settings/effective redirect when access returns, recheck unresolved invitation/Auth counts, and obtain explicit approval for the concrete Level 3 cutover. PR #20 merge approval remains pending.
+
+For configuration rollback, pause new link issuance and reconcile any links issued since preparation before restoring the recorded prior Site URL `http://localhost:3000` and empty additional list; those prior values are evidence, not a known-working production setup. Do not delete Auth identities or invitation rows as part of this URL rollback. For the later repository/Pages cutover, use the original narrow cutover rollback above and verify recovery through a real link.
