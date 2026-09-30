@@ -47,3 +47,24 @@ Rollback: revert the narrow governance PR from main; restore AGENTS.md and remov
 ## Deferred improvements — not part of this PR
 
 FPP's Markdown-only Android CI optimization is also useful to FWH, but FWH has **two** separate CI workflows. Adapt their skip logic in a separate narrow verified change after the governance baseline is proven, retaining stable required check job names for both Android and dashboard. Do not copy FPP's release/signer-specific tests or FPP's SAF photo-provider test packs into FWH.
+
+
+## Post-merge live activation evidence — 2026-09-30
+
+Governance implementation PR [#22](https://github.com/timbone72-CC/field-photo-prep-team/pull/22) merged to main at `b5ca84bf3bd55e92504de5d932060e0f45963132`. Both required existing workflows passed on its final implementation head `cf5ee8880137f08aba04161a8466595b3f084897`: Admin Dashboard Gate CI run `36709402244` and Android Team Client CI run `36709402215`. Both also passed on the merged main push; no FWH Android/dashboard/Supabase/Drive or original FPP product changes were made by this governance PR.
+
+Actual `pull_request_target` evidence on the existing non-runtime FWH rename-plan PR #21 (`docs/field-work-hub-rename-plan`, unchanged commit `9bce9fe64e573904d0502ab9beb8005aa67cda36`):
+
+1. Normal, fully classified PR body: [Governance Check run 36710867970](https://github.com/timbone72-CC/field-photo-prep-team/actions/runs/36710867970) — **PASS**.
+2. Temporary **negative fixture**, consisting only of clearing the required PR-body `Scope key` field: [Governance Check run 36710933047](https://github.com/timbone72-CC/field-photo-prep-team/actions/runs/36710933047) — **EXPECTED FAILURE**. The actual job log identified `Missing or empty required field: Scope key`; this was a deliberately invalid test, not an application or governance regression.
+3. The exact valid PR metadata was immediately restored without changing the PR branch or file diff. [Final Governance Check run 36710984692](https://github.com/timbone72-CC/field-photo-prep-team/actions/runs/36710984692) — **PASS**. PR #21 remains open and unmerged.
+
+Existing open PR #17 (Phase 3A) and PR #20 (contractor setup links) retain separate **DRAFT / Level 3 / PENDING** status. Their physical/provider and explicit operator merge gates are unchanged.
+
+### GitHub enforcement state and next actual checkpoint
+
+GitHub's live `branches/main` read returned **`protected: false`** and the repository's ruleset listing returned an **empty array**. The available GitHub connector receives a `403 Resource not accessible by integration` when querying the detailed branch-protection endpoint and exposes no branch-protection/ruleset write operation. Therefore **the workflow is genuinely active and verified, but it is not yet a hard merge barrier**.
+
+**Next checkpoint — repository-admin UI:** enable a `main` protection rule/ruleset with pull requests required; status checks `Governance Check / governance`, `Android Team Client CI / build`, and `Admin Dashboard Gate CI / dashboard` (verify the exact job names in GitHub's selector); require resolved review conversations if available; block force pushes and deletion; prevent admin bypass when supported. Do not add an unnecessary second reviewer, signed-commit requirement or strict up-to-date-branch rule. Re-read the live branch/ruleset state and verify the three required checks actually block merging before marking hard enforcement complete. No protection setting was changed automatically.
+
+The branding plan PR #21 and product implementation PR #17/#20 remain separate. No future product runtime change is authorized by this evidence closeout.
