@@ -134,7 +134,7 @@ Verified runtime candidate: `c7938e900261471a8102fd491c30a539934a05ca`. Its succ
 - The latest read-only eligibility check returned **2 assignable Contractors**, including the new fixture. There were **0 `SENT` setup links** among the recent setup-test rows; this does not replace the required all-invitation check immediately before rename.
 - At **2026-10-01T00:17:51Z** (September 30 in America/Chicago), the operator replied **Works** after reloading the Team Admin dashboard with Ctrl + Shift + R and checking that both Contractors appeared in the assignment dropdown.
 
-Browser account activation and Admin assignability are now **PASS**. Exact address-bar/effective `TEAM_INVITE_REDIRECT_URL` readback and the clipboard-specific copy outcome were not independently observed. Do not reopen or reissue the consumed setup credential merely to repeat the passed activation.
+Browser account activation, Admin assignability and new-Contractor Android sign-in are now **PASS**. Exact address-bar/effective `TEAM_INVITE_REDIRECT_URL` readback and the clipboard-specific copy outcome were not independently observed. Do not reopen or reissue the consumed setup credential merely to repeat the passed activation.
 
 ### Dashboard session observation
 
@@ -144,13 +144,14 @@ Source inspection found that `dashboard/session.js` refreshes the token during s
 
 ### Android handoff and remaining gates
 
-Next gate: sign into the separate Team Android client with the newly activated Contractor account.
+The operator confirmed the separate Team Android app was installed, then reported successful sign-in with the newly activated Contractor account at **2026-10-01T00:27:29Z**. A read-only Auth check independently showed that account's latest sign-in at **2026-10-01T00:27:07.753234Z**. This is operator-reported Android evidence plus backend login evidence; the installed APK's exact revision was not independently identified.
 
-The existing candidate build is still labeled **Field Photo Prep Team Internal**, package `com.inandout.fieldphotoprep.team.internal`; branding has not yet changed it to Field Work Hub. Android run `35673493268` produced artifact `10671569808`, `field-photo-prep-team-phase2-consent-apk`, and its CI checked the package, label, network permission and stable non-production test signer. This is build evidence, not proof of installation or Contractor sign-in on the operator's phone.
+Next gate: the approved Phase 2 disposable-work reassignment/receipt smoke.
+
+The existing candidate build is still labeled **Field Photo Prep Team Internal**, package `com.inandout.fieldphotoprep.team.internal`; branding has not yet changed it to Field Work Hub. Android run `35673493268` produced artifact `10671569808`, `field-photo-prep-team-phase2-consent-apk`, and its CI checked the package, label, network permission and stable non-production test signer. This is evidence for the staged candidate artifact; it does not independently identify the operator's existing installed APK.
 
 Still pending:
 
-- new Contractor Android sign-in;
 - remaining Phase 2 reassignment/receipt smoke;
 - final required checks on the actual PR head and explicit Level 3 pre-merge approval;
 - pre-rename hosted-setting/effective-redirect reconciliation, all-invitation recheck and separately gated hosting/Auth cutover.
