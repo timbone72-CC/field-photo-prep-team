@@ -4,6 +4,7 @@ let contractorManagementReady = false;
 let contractorSeatAvailable = false;
 let contractorSeatSummary = null;
 let pendingContractorInvitations = [];
+let contractorInvitationsRendered = false;
 
 const renderSignedInBeforeContractors = renderSignedIn;
 renderSignedIn = function renderSignedInWithContractors(rows, users, organizationId) {
@@ -96,6 +97,17 @@ async function refreshContractorManagement(refreshAssignees = false) {
     fetchPendingContractorInvitations()
   ]);
 
+  renderContractorManagement(summary, pendingInvitations);
+
+  if (refreshAssignees) {
+    const users = await fetchAssignableUsers();
+    assignableUsers = users;
+    renderAssignableUsers(users);
+  }
+}
+
+function renderContractorManagement(summary, pendingInvitations) {
+  const invitationsChanged = JSON.stringify(pendingContractorInvitations) !== JSON.stringify(pendingInvitations);
   contractorSeatSummary = summary;
   pendingContractorInvitations = pendingInvitations;
   contractorSeatAvailable = Number(contractorSeatSummary.available_seats) > 0;
@@ -113,17 +125,14 @@ async function refreshContractorManagement(refreshAssignees = false) {
     inviteButton.disabled = !contractorSeatAvailable;
   }
 
-  renderPendingContractorInvitations(pendingContractorInvitations);
-
-  if (refreshAssignees) {
-    const users = await fetchAssignableUsers();
-    assignableUsers = users;
-    renderAssignableUsers(users);
+  if (invitationsChanged || !contractorInvitationsRendered) {
+    renderPendingContractorInvitations(pendingContractorInvitations);
+    contractorInvitationsRendered = true;
   }
 }
 
 async function fetchContractorSeatSummary() {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_get_contractor_seat_summary`, {
+  const response = await adminFetch(`${SUPABASE_URL}/rest/v1/rpc/admin_get_contractor_seat_summary`, {
     method: 'POST',
     headers: authHeaders(true),
     body: '{}'
@@ -142,7 +151,7 @@ async function fetchContractorSeatSummary() {
 }
 
 async function fetchPendingContractorInvitations() {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_list_pending_contractor_invitations`, {
+  const response = await adminFetch(`${SUPABASE_URL}/rest/v1/rpc/admin_list_pending_contractor_invitations`, {
     method: 'POST',
     headers: authHeaders(true),
     body: '{}'
@@ -173,7 +182,7 @@ async function handleContractorInvite(event) {
   setContractorInviteStatus('Creating setup link…', false);
 
   try {
-    const response = await fetch(CONTRACTOR_INVITE_FUNCTION_URL, {
+    const response = await adminFetch(CONTRACTOR_INVITE_FUNCTION_URL, {
       method: 'POST',
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
@@ -278,7 +287,7 @@ async function handleContractorInvitationCancel(invitation, cancelButton) {
   setContractorInviteStatus(`Cancelling invitation to ${label}…`, false);
 
   try {
-    const response = await fetch(CONTRACTOR_INVITE_FUNCTION_URL, {
+    const response = await adminFetch(CONTRACTOR_INVITE_FUNCTION_URL, {
       method: 'POST',
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,

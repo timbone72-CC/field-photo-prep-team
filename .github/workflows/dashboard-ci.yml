@@ -51,9 +51,12 @@ jobs:
       - name: Check dashboard JavaScript syntax
         run: |
           node --check dashboard/app.js
+          node --check dashboard/auto-refresh.js
           node --check dashboard/session.js
           node --check dashboard/contractors.js
           node --check dashboard/contractor-invite.js
+      - name: Test automatic Admin updates and session races
+        run: node --test tests/dashboard/*.test.js
       - name: Verify refresh-safe Admin tab session
         shell: bash
         run: |

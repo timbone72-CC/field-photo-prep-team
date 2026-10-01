@@ -183,7 +183,7 @@ signOutButton.addEventListener('click', () => {
   resultsCard.classList.add('hidden');
   loginCard.classList.remove('hidden');
   emailInput.focus();
-  setLoginStatus('Signed out. Session was held in memory only.', false);
+  setLoginStatus('Signed out.', false);
 });
 
 async function signInWithPassword(email, password) {
@@ -205,7 +205,7 @@ async function signInWithPassword(email, password) {
 
 async function fetchCurrentUser() {
   requireAccessToken();
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: authHeaders() });
+  const response = await adminFetch(`${SUPABASE_URL}/auth/v1/user`, { headers: authHeaders() });
 
   if (!response.ok) {
     throw new Error(await readableError(response, 'Unable to verify the signed-in user.'));
@@ -234,7 +234,7 @@ async function fetchWorkOrders() {
 
   // Intentionally broad request: no organization_id or assigned_user_id filter.
   // Supabase RLS is the authorization boundary for rows returned here.
-  const response = await fetch(
+  const response = await adminFetch(
     `${SUPABASE_URL}/rest/v1/work_orders?select=${encodeURIComponent(select)}&order=created_at.asc`,
     { headers: authHeaders() }
   );
@@ -248,7 +248,7 @@ async function fetchWorkOrders() {
 
 async function fetchAssignableUsers() {
   requireAccessToken();
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_list_assignable_users`, {
+  const response = await adminFetch(`${SUPABASE_URL}/rest/v1/rpc/admin_list_assignable_users`, {
     method: 'POST',
     headers: authHeaders(true),
     body: '{}'
@@ -263,7 +263,7 @@ async function fetchAssignableUsers() {
 
 async function createWorkOrder({ generateWoNumber, woNumber, propertyAddress, workType, instructions, dueDate, assignedUserId }) {
   requireAccessToken();
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_create_work_order`, {
+  const response = await adminFetch(`${SUPABASE_URL}/rest/v1/rpc/admin_create_work_order`, {
     method: 'POST',
     headers: authHeaders(true),
     body: JSON.stringify({
@@ -286,7 +286,7 @@ async function createWorkOrder({ generateWoNumber, woNumber, propertyAddress, wo
 
 async function updateWorkOrder({ workOrderId, woNumber, propertyAddress, workType, instructions, dueDate, assignedUserId }) {
   requireAccessToken();
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_update_work_order`, {
+  const response = await adminFetch(`${SUPABASE_URL}/rest/v1/rpc/admin_update_work_order`, {
     method: 'POST',
     headers: authHeaders(true),
     body: JSON.stringify({
