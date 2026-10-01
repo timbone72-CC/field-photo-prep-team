@@ -656,6 +656,19 @@ Gate: **SATISFIED.**
 - organization WO-number duplicate guard;
 - tab-scoped dashboard session refresh behavior.
 
+## Approved Admin automatic-refresh refinement — 2026-09-30
+
+Operator request: work-order and receipt changes should appear without manually refreshing the Admin dashboard. This is a Level 2 client-visibility refinement of existing Phase 2 behavior.
+
+- While the signed-in Admin page is visible and online, refresh work orders, assignable Contractors and seat/invitation summaries every 15 seconds; refresh promptly on return to the page or network.
+- Keep the manual Contractor refresh button. Do not poll a hidden, offline or signed-out page, overlap polls, or automatically repeat a mutation.
+- Refresh an expiring Admin access token through the existing Auth refresh endpoint before authenticated requests. Share concurrent refreshes; retain only the existing tab-session storage. Sign out on rejected refresh/authorization, preserve the last received view on a temporary network failure, and never apply a response from a prior login.
+- Preserve create/edit input, selected Contractor, and scroll position. Update the read-only list only when data changes; warn if the currently edited work order changes on the server.
+- Server RLS, role/org checks, dispatch/consent/receipt semantics and credential boundaries remain authoritative. No Supabase migration, Auth URL change, Android identity, backend mutation retry or original FPP change.
+- Dashboard/session ownership is `feat/admin-auto-refresh`, scope `admin-auto-refresh`. Android refresh remains owned by the existing Phase 3A line, whose cache/session changes must be reconciled there; this slice changes no Android file.
+- Focused tests cover periodic/lifecycle behavior, unchanged lists, drafts, stale responses, concurrent token rotation, sign-out and temporary/permanent failures. Required final CI runs on the actual head; a real Admin browser check must show a disposable Contractor receipt appearing automatically and preserve an unsaved edit before merge.
+- Rollback is the narrow source revert to main `5757dbc02e712eea70ace7763f5ddae2b38712b2`; no account, fixture or business-data deletion.
+
 ## Existing proof
 
 - hosted Admin create/assign;
