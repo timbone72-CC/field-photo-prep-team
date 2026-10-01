@@ -128,7 +128,7 @@ Verified runtime candidate: `c7938e900261471a8102fd491c30a539934a05ca`. Its succ
 
 ### Passed observations
 
-- Deployed Team `admin-invite-contractor` version 3 has JWT verification enabled and source matching this runtime candidate, as independently recorded in [the rename rollout checkpoint](FWH_REPO_RENAME_ICON_ROLLOUT_2026-09-30.md). No redeployment was needed.
+- Deployed Team `admin-invite-contractor` version 3 has JWT verification enabled and source matching this runtime candidate, as independently recorded in [the rename rollout checkpoint](https://github.com/timbone72-CC/field-photo-prep-team/blob/5757dbc02e712eea70ace7763f5ddae2b38712b2/docs/FWH_REPO_RENAME_ICON_ROLLOUT_2026-09-30.md). No redeployment was needed.
 - The operator created the generic disposable fixture **FWH Setup Test** through live Admin, reported **Setup link ready**, opened the link on a phone, and confirmed choosing and saving the contractor password. No password, email or credential-bearing setup URL is recorded here.
 - Read-only Team checks found exactly one recent fixture invitation, `ACCEPTED`, with confirmed Auth email, server-controlled `CONTRACTOR` role and matching organization, plus the matching invitation marker.
 - The latest read-only eligibility check returned **2 assignable Contractors**, including the new fixture. There were **0 `SENT` setup links** among the recent setup-test rows; this does not replace the required all-invitation check immediately before rename.
