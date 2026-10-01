@@ -24,12 +24,21 @@ PR #20 remains the independent Level 3 onboarding owner. PR #17 remains the Andr
 
 Focused local tests: 15 passing tests for visible/hidden/offline scheduling, unchanged snapshots, receipt updates, retained drafts/selections/scroll, unavailable assignees, overlapping polls, dispatch/sign-out/body races, concurrent token rotation, temporary and rejected refresh, wrong-organization data and no automatic mutation replay. Changed JavaScript syntax and diff/credential-storage checks pass.
 
-These are controlled tests, not a claim of a real hosted browser receipt update. Required GitHub `governance`, `build` and `dashboard` checks must pass on the actual proposed head. Before merge, use a safe browser preview with an operator-controlled test order: leave the Admin page open with an unsaved edit, refresh the Contractor app once, and confirm receipt changes within the next polling cycle while the draft remains unchanged. Do not create another invitation or change live customer work merely for this check.
+Required GitHub `governance`, `build` and `dashboard` checks passed on runtime head `06484614119d327797f9c87d49a65221dadfcc33`: runs 36799036071, 36799035878 and 36799035910 respectively. The evidence-only checkpoint commit must receive its own required checks before merge.
 
-Existing live setup evidence: the new Contractor's password setup, ACCEPTED authority, Admin dropdown and Android sign-in passed. The operator additionally reported phone delivery and Admin receipt for disposable `FPP-000001`, address `FWH SETUP TEST`, work type `TEST ONLY`; a read-only Team check confirmed ASSIGNED, assigned to the setup fixture, receipt present and no pending handoff. The prior command to reassign this test order was not yet confirmed when this automatic-refresh request arrived. Preserve that state and complete PR #20's remaining compact reassignment/receipt smoke separately.
+Authenticated laptop browser checks on the published candidate at `http://127.0.0.1:3100/`, using only disposable `FPP-000001`:
+
+- At 20:51:27 America/Chicago, the operator confirmed an external saved `SERVER UPDATE TEST` instructions change appeared automatically in the candidate WO card while its unsaved `AUTO REFRESH TEST` editor text remained. Automatic server updates and retained drafts: PASS.
+- At 21:30:28, the operator reported the test dashboard showed Contractor receipt `Received`. Asked whether it changed on its own or was already present when opened, the operator answered `on it own` at 21:31:18. Automatic receipt display: PASS by operator observation. No independently measured polling latency or agent-observed browser capture is claimed.
+- The operator clarified that the phone was signed into the other existing Contractor before the final receipt test. Earlier account assumptions were incorrect; do not use those assumptions as proof of an account-specific reassignment or exact installed APK revision. No credentials or Contractor email addresses are recorded here.
+- The earlier stale hosted dashboard was the existing Pages version without this feature. The cloud preview was blocked before sign-in; the actual successful checks were on the operator's laptop. A proposed phone start-work action was unavailable, so no IN_PROGRESS test is claimed.
+
+The browser receipt/update/draft gate is complete. No additional invitation or live customer work was created. Android automatic refresh remains separate.
+
+Existing live setup evidence: the new Contractor's password setup, ACCEPTED authority, Admin dropdown and Android sign-in passed. The operator additionally reported phone delivery and Admin receipt for disposable `FPP-000001`, address `FWH SETUP TEST`, work type `TEST ONLY`; a read-only Team check confirmed ASSIGNED, assigned to the setup fixture, receipt present and no pending handoff. The account-specific reassignment/consent evidence for PR #20 remains a separate gate; this automatic-refresh smoke does not claim to close it.
 
 ## Rollback and status
 
 Rollback: revert only this feature to main `5757dbc02e712eea70ace7763f5ddae2b38712b2`. Preserve Auth accounts, invitations, test work and any real data. No live backend/configuration rollback is needed because this source change does not modify them.
 
-Status: candidate implementation and focused checks complete; final exact-head CI, authenticated browser smoke, merge and Pages deployment pending. Repo rename, Android auto-refresh and original FPP changes are not completed by this slice.
+Status: candidate implementation, focused checks, runtime-head CI and authenticated operator browser smoke complete; checkpoint-head CI, merge and Pages deployment pending. Repo rename, Android auto-refresh and original FPP changes are not completed by this slice.
