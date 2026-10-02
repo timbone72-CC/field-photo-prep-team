@@ -4,14 +4,14 @@
 
 **Field Work Hub (FWH)** is the multi-user work-order dispatch, offline contractor fieldwork and protected evidence-delivery system. The office uses **Field Work Hub Admin**; contractors use an independently installed Android client. This approved product display name does not by itself rename technical identities.
 
-- Authoritative FWH repository (existing slug): timbone72-CC/field-photo-prep-team.
+- Authoritative FWH repository: timbone72-CC/field-work-hub (renamed from the historical field-photo-prep-team slug; same repository identity).
 - Distinct read-only reference: timbone72-CC/field-photo-prep, the original single-user Field Photo Prep app.
 - Current internal Android package and stable test signer remain unchanged until a separately approved technical-identity change.
 - The Field Work Hub rename plan is tracked separately from governance and active product phases.
 
 ## Authoritative systems
 
-**GitHub:** completed FWH main; each in-progress scope's one authoritative branch/PR and durable record. Separate current onboarding PR #20 and Phase 3A PR #17 remain governed, unmerged implementation lines at the date of this profile; always recheck their actual state.
+**GitHub:** completed FWH main; each in-progress scope's one authoritative branch/PR and durable record. Onboarding PR #20, Admin automatic refresh PR #27 and the repository/redirect cutover PR #28 are merged. The new-address setup activation test is explicitly deferred until the next Contractor onboarding because both seats are occupied. Phase 3A PR #17 remains an independent draft; always recheck its actual state.
 
 **Team Supabase/Auth:** authenticated user and server-controlled organization/role, seat/invitation lifecycle, server-approved current assignment/reassignment, work-order and run identity, accepted field state and synchronized metadata. Enforce RLS and narrow server-authorized operations. Never ship elevated keys to clients.
 

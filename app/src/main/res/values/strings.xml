@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">Field Photo Prep Team Internal</string>
-    <string name="phase1_title">Team Contractor Login</string>
-    <string name="phase1_intro">Sign in with your Team account. Work orders are returned by Supabase RLS; the app does not filter assignments locally.</string>
+    <string name="app_name">Field Work Hub Internal</string>
+    <string name="phase1_title">Field Work Hub Login</string>
+    <string name="phase1_intro">Sign in with your Field Work Hub account. Work orders are returned by Supabase RLS; the app does not filter assignments locally.</string>
     <string name="assignments_title">My Assignments</string>
     <string name="assignments_intro">Active work is shown first. Completed work is kept separate below.</string>
     <string name="assignments_heading">Current Assignments</string>
