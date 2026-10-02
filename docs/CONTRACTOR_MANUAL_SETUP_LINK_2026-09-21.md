@@ -122,6 +122,8 @@ Do not merge until:
 
 ## Provider reality checkpoint — 2026-09-30 operator session
 
+Historical checkpoint. Its pending-status statements are superseded by the final reconciliation below.
+
 This is a documentation-only checkpoint on PR #20's existing authoritative branch. It changes no runtime source, deployment, Auth settings, account, seat limit or original FPP surface. The underlying onboarding work remains Level 3, draft and unmerged; explicit pre-merge approval is still pending.
 
 Verified runtime candidate: `c7938e900261471a8102fd491c30a539934a05ca`. Its successful Android and dashboard CI runs are [35673493268](https://github.com/timbone72-CC/field-photo-prep-team/actions/runs/35673493268) and [35673493265](https://github.com/timbone72-CC/field-photo-prep-team/actions/runs/35673493265). These are evidence for that earlier exact head, not the later documentation commit.
@@ -146,7 +148,7 @@ Source inspection found that `dashboard/session.js` refreshes the token during s
 
 The operator confirmed the separate Team Android app was installed, then reported successful sign-in with the newly activated Contractor account at **2026-10-01T00:27:29Z**. A read-only Auth check independently showed that account's latest sign-in at **2026-10-01T00:27:07.753234Z**. This is operator-reported Android evidence plus backend login evidence; the installed APK's exact revision was not independently identified.
 
-Next gate: the approved Phase 2 disposable-work reassignment/receipt smoke.
+The final reconciliation below records the later Phase 2 evidence and current gate.
 
 The existing candidate build is still labeled **Field Photo Prep Team Internal**, package `com.inandout.fieldphotoprep.team.internal`; branding has not yet changed it to Field Work Hub. Android run `35673493268` produced artifact `10671569808`, `field-photo-prep-team-phase2-consent-apk`, and its CI checked the package, label, network permission and stable non-production test signer. This is evidence for the staged candidate artifact; it does not independently identify the operator's existing installed APK.
 
@@ -157,3 +159,37 @@ Still pending:
 - pre-rename hosted-setting/effective-redirect reconciliation, all-invitation recheck and separately gated hosting/Auth cutover.
 
 Keep the repository and effective invitation destination on their current paths while these gates remain open. Preserve the accepted test account for the remaining smoke; do not delete it as unused-invitation cleanup.
+
+
+## Final pre-merge reconciliation — 2026-10-01
+
+This is an evidence-only update on the same authoritative backend branch. Runtime implementation remains `c7938e900261471a8102fd491c30a539934a05ca`; no runtime, Auth setting, Edge deployment, account, seat limit, Android identity or original FPP change is included. The record parent `dab4d60c03b0291222d7c72d85887c21510f715d` passed governance/build/dashboard (runs 36948227337, 36796499541 and 36796499626). Required checks on this final documentation head are recorded in PR #20 before merge; do not substitute the parent runs for its own checks.
+
+### Final evidence
+
+- Real setup link, contractor-chosen password, ACCEPTED authority, Admin assignability and Contractor Android sign-in remain PASS. Preserve the consumed credential and accepted fixture; do not reissue a link or create another test account for reassurance.
+- The operator reported reassignment of disposable `FPP-000001`, disappearance from the previous Contractor's phone after Refresh Assignments, return assignment and subsequent phone receipt. At 20:07 America/Chicago on October 1, the operator clarified which account was signed in for the disappearance observation; this resolves the specific account clarification requested in PR #20. The account is referred to generically here to keep Contractor PII out of the public repository.
+- The operator additionally reported that receipt changed to Received automatically in the candidate Admin dashboard at 21:31 America/Chicago on September 30, confirming a new receipt transition. Taken with the reassignment and phone-exclusion reports, the compact Phase 2 reassignment/reset/return/receipt smoke is accepted as operator-reported PASS. No independently captured historical receipt-reset timestamp, measured polling latency or exact installed APK revision is claimed.
+- A current read-only Team check corroborated `FPP-000001` is ASSIGNED to the accepted setup fixture with receipt present and no pending handoff, and a boolean check matched the phone account reported for the final receipt test. Protected controls remain `TEST-0001` FIELD_COMPLETE/received and `TEST-0002-ADMIN-ONLY` ASSIGNED/not received.
+- The Phase 2 roadmap makes a real IN_PROGRESS consent handoff optional if practical. The installed client did not show a Start Work action; no such transition or consent observation is claimed, and no Phase 3 action was invented for this closure. Existing automated consent/authorization coverage remains unchanged.
+- Separate PR #27 merged at `217dc90cd12148088d9f6ad9c2e8d429dbed10ef`, deployed Admin automatic refresh and passed its external-update/draft/receipt and live handoff checks. This supersedes the earlier dashboard-session follow-up status; it is not an Android automatic-refresh implementation.
+
+### Pre-rename URL preparation
+
+On October 1 at 19:39 America/Chicago, the operator read back the Team portal values:
+
+- Site URL: `https://timbone72-cc.github.io/field-photo-prep-team/`
+- Existing setup redirect: `https://timbone72-cc.github.io/field-photo-prep-team/contractor-invite.html`
+- Prepared setup redirect: `https://timbone72-cc.github.io/field-work-hub/contractor-invite.html`
+
+At 19:52, the operator confirmed `TEAM_INVITE_REDIRECT_URL` was not listed in Edge Functions Secrets. The retrieved deployed v3 source uses that environment override or the exact existing setup URL above. Combined with operator-reported absence, the effective current destination is the existing setup page. Hosted configuration absence/values are operator readback, not an independent secret/configuration API read. No secret values were copied or changed.
+
+The new setup URL is preauthorized but its Pages path is not deployed. Keep current URLs through preparation. Recheck unresolved invitation/Auth dependencies immediately before the separately approved repository/Pages/Auth cutover. The September 30 zero-unresolved invitation count is not a fresh October 1 rename gate.
+
+### Current merge decision
+
+Completed: runtime/provider source parity, required runtime verification, real setup/activation/assignability/login and operator-reported Phase 2 closure. This PR contains only the invitation backend, its CI safeguards and this implementation record; current main's completed Admin refresh is preserved.
+
+Pending: final evidence-head checks and explicit operator Level 3 pre-merge approval, recorded in the PR when received. Do not merge from a generic continuation instruction. The separately gated repository/hosting/Auth cutover and FWH label/icon work remain future steps.
+
+Rollback remains the narrow backend revert/redeployment described above, preserving existing accounts, invitation/seat evidence and the already-merged setup UI. No migration or new provider deployment is needed merely to merge the already-deployed v3 source. The original FPP is untouched.
