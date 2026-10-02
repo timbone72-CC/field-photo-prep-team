@@ -6,7 +6,9 @@ Status: **IMPLEMENTATION IN PROGRESS — LEVEL 3 — DO NOT MERGE WITHOUT EXPLIC
 
 Branch: `feat/phase-3a-run-room-foundation`
 
-Base / rollback point: `0c657182443d09f86c7e23872458f457016468c2`
+Original implementation base: `0c657182443d09f86c7e23872458f457016468c2`
+
+Current main / runtime rollback point: `778dfc5f67e47157f6b154d5476b26ae427bad55`
 
 ## Approved scope
 
@@ -209,6 +211,8 @@ On app/process restart:
 
 Explicit Sign Out clears the encrypted reusable session record and locks access; Room evidence remains.
 
+Session writes and invalidation share `SessionOperationGuard`. A refresh that returns after Sign Out cannot save credentials or reopen the work list. Old successes/errors cannot update a newer login. Activity destruction invalidates callbacks without clearing the session needed for restart. Queued refresh/reassignment operations read the latest encrypted refresh token, and a successful rotation updates the in-memory session even when the following work-order request fails.
+
 ## Automated verification
 
 Implemented focused coverage includes:
@@ -243,7 +247,7 @@ Before merge, complete Android/Admin CI must pass on the exact final runtime hea
 
 ## Physical gate after all automated/provider-independent work
 
-1. install final Phase 3A APK on the S22;
+1. install the final Phase 3A APK over the existing FWH internal app on the supported test Android phone;
 2. sign in online and refresh disposable assignments;
 3. verify receipt only after durable download;
 4. kill/restart app while online and verify cached reconstruction + refresh;
@@ -252,7 +256,7 @@ Before merge, complete Android/Admin CI must pass on the exact final runtime hea
 7. verify another signed-in user cannot see the prior user's cache when a second test contractor becomes available;
 8. restore network and verify clean refresh convergence.
 
-The second-contractor isolation check may remain externally blocked until another valid test Contractor exists; automated Room owner isolation already protects the local data boundary in the meantime.
+Two existing test Contractor accounts are now available. Use those accounts for the owner-isolation check; do not create another invitation or replace either account. Automated Room owner isolation remains distinct from physical evidence.
 
 Phase 3B Start/Finish offline actions are not part of this gate.
 
@@ -260,7 +264,7 @@ Phase 3B Start/Finish offline actions are not part of this gate.
 
 ### Repository
 
-Revert the Phase 3A PR to base `0c657182443d09f86c7e23872458f457016468c2`.
+Revert only the merged Phase 3A change, preserving current main `778dfc5f67e47157f6b154d5476b26ae427bad55` and its onboarding, automatic Admin updates, redirect cutover and FWH branding. The original pre-reconciliation base is historical evidence, not the current rollback target.
 
 ### Android
 
@@ -269,3 +273,23 @@ Room v1 is additive. Do not delete the database merely to roll back a failed UI 
 ### Supabase
 
 Before live application, capture the exact pre-migration schema evidence. If the migration itself fails, stop and do not stack repair migrations blindly. If a post-application defect is found, preserve run/history rows and use a narrow forward repair migration; do not drop history tables or erase assignment evidence as a routine rollback.
+
+
+## Resume checkpoint — 2026-10-02
+
+- Goal / scope key: reconcile the existing `phase-3a-run-room-foundation` draft with completed FWH main and complete its automated gate.
+- Level: **Level 3**; authoritative line remains `feat/phase-3a-run-room-foundation`, draft PR #17. No replacement branch/PR.
+- Operator authorization: the operator replied **Next** to updating this draft and completing automated checks. This authorizes the present reconciliation; it is not pre-merge approval or authorization for Phase 3B/3C.
+- Required packs: AGENTS.md, GOVERNANCE.md, PROJECT_PROFILE.md, RULE_INDEX.md, CHANGE_CONTROL_CONTRACT.md, TESTING_CONTRACT.md, INTEGRATION_CONTRACT.md, docs/PHASE_STAGING_DOCTRINE.md, approved roadmap Phase 3, this record.
+- Observed starting draft: `cb703406d0765e5cd7f0583fe94e45c2ee8b32e0`.
+- Reconciled main / rollback: `778dfc5f67e47157f6b154d5476b26ae427bad55` (PRs #20, #27, #28 and #29 are included).
+- Affected surfaces: existing Phase 3A Android/Room/session draft, Android CI, roadmap status and this record. Server SQL draft remains unchanged.
+- Protected behavior: durable save precedes receipt; exact owner/org/WO/run cache binding; Sign Out locks without deleting Room; existing contractor consent and dispatch; FWH package/signer/data; original FPP separation.
+- Main overlap: the sole textual conflict was the Android artifact name. CI retains Phase 3A JVM tests and Room schema export alongside the current FWH label/icon/package/signer checks; artifacts are named for FWH Phase 3A.
+- Narrow session repair: delayed refresh could previously repersist credentials and reopen the list after Sign Out. Guarded credential writes and UI callbacks now invalidate that operation. Queued refreshes use the latest durable rotated token rather than a stale UI snapshot.
+- Focused verification: 15 Admin dashboard regression tests passed locally. Three JVM session-operation regressions cover delayed refresh after Sign Out, old-account failure after a new login, and Activity destruction preserving restart credentials. Full Room/encrypted-session/Android build and identity proof belongs to PR #17's exact-head CI.
+- External state: read-only inspection of FWH project `vyocaujuwrivoqynvitm` on 2026-10-02 found no `work_order_runs`, no `work_order_assignments`, no `work_orders.current_run_id`, and no `photos.run_id`. Live migration history ends with `20260915104441_index_contractor_invitation_cancellation_audit`. No DDL, Auth settings, Edge Function, hosted dashboard, Drive, signer or FPP state was changed in this checkpoint.
+- Automated gate: verify all required GitHub checks on the published PR head; exact result/SHA is recorded in PR #17's verification section. A failure blocks progression.
+- Physical evidence: **PENDING**; do not install this migration-dependent candidate before the governed database gate passes.
+- Merge: **NOT MERGED / APPROVAL PENDING**.
+- Next exact gate after automated PASS: review/apply the staged Phase 3A migration through the governed migration action, mirror its returned version, verify Run-1/history/photo binding, timestamp preservation and real authorization/RPC behavior, then run advisors. After backend parity, stage one cache/restart/Sign Out/owner-isolation phone gate. Phase 3B/3C and phone automatic refresh are outside this checkpoint.

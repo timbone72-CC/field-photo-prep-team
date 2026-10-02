@@ -30,7 +30,7 @@ passwordForm.addEventListener('submit', async (event) => {
       throw new Error('The two passwords do not match.');
     }
     if (!inviteAccessToken || !invitedUser) {
-      throw new Error('The invitation session is no longer available. Open the invitation email again.');
+      throw new Error('The setup session is no longer available. Ask your Admin for a new setup link.');
     }
 
     const passwordResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -98,7 +98,7 @@ async function bootInvite() {
   history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
 
   if (!accessToken || (type && type !== 'invite')) {
-    failInvite('This page needs a valid Contractor invitation link. Open the invitation email and use its link.');
+    failInvite('This page needs a valid Contractor setup link. Open the link your Admin shared with you.');
     return;
   }
 
@@ -113,7 +113,7 @@ async function bootInvite() {
     });
 
     if (!response.ok) {
-      throw new Error(await readableError(response, 'This invitation is invalid or expired.'));
+      throw new Error(await readableError(response, 'This setup link is invalid, expired, or already used.'));
     }
 
     invitedUser = await response.json();
@@ -121,7 +121,7 @@ async function bootInvite() {
     const invitationMarker = invitedUser.user_metadata?.team_invitation_id;
 
     if (metadata.role !== 'CONTRACTOR' || !metadata.organization_id || !invitationMarker) {
-      throw new Error('This invitation is not a valid Field Photo Prep Team Contractor invitation.');
+      throw new Error('This is not a valid Field Photo Prep Team Contractor setup link.');
     }
 
     inviteCheck.className = 'check pass';

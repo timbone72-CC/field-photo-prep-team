@@ -51,9 +51,12 @@ jobs:
       - name: Check dashboard JavaScript syntax
         run: |
           node --check dashboard/app.js
+          node --check dashboard/auto-refresh.js
           node --check dashboard/session.js
           node --check dashboard/contractors.js
           node --check dashboard/contractor-invite.js
+      - name: Test automatic Admin updates and session races
+        run: node --test tests/dashboard/*.test.js
       - name: Verify refresh-safe Admin tab session
         shell: bash
         run: |
@@ -119,11 +122,20 @@ jobs:
           grep -q 'team_finalize_contractor_invitation' supabase/functions/admin-invite-contractor/index.ts
           grep -q 'team_finalize_contractor_invitation_cancel' supabase/functions/admin-invite-contractor/index.ts
           grep -q 'admin_begin_contractor_invitation_cancel' supabase/functions/admin-invite-contractor/index.ts
-          grep -q 'inviteUserByEmail' supabase/functions/admin-invite-contractor/index.ts
+          grep -q 'generateLink' supabase/functions/admin-invite-contractor/index.ts
+          grep -q "type: 'invite'" supabase/functions/admin-invite-contractor/index.ts
+          grep -q 'setup_url' supabase/functions/admin-invite-contractor/index.ts
+          grep -q 'Copy Setup Link' dashboard/contractors.js
+          grep -q 'navigator.clipboard.writeText' dashboard/contractors.js
+          grep -q 'contractor-setup-link-result' dashboard/contractors.js
+          if grep -q 'inviteUserByEmail' supabase/functions/admin-invite-contractor/index.ts; then
+            echo 'Contractor onboarding must not depend on Supabase email delivery.' >&2
+            exit 1
+          fi
           grep -q 'deleteUser' supabase/functions/admin-invite-contractor/index.ts
       - name: Upload admin dashboard
         uses: actions/upload-artifact@v4
         with:
-          name: field-photo-prep-team-admin-dashboard
+          name: field-work-hub-admin-dashboard
           path: dashboard/
           if-no-files-found: error
