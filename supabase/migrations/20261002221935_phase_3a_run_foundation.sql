@@ -1,7 +1,34 @@
--- Phase 3A draft only.
--- This file is intentionally NOT under supabase/migrations/ yet.
--- Apply through the governed Supabase migration gate, then mirror the exact
--- applied migration version into supabase/migrations/.
+-- Phase 3A run/history foundation.
+-- Apply only through the governed FWH migration gate. Mirror the exact applied
+-- SQL under the migration version returned by the target FWH project.
+
+-- Guard the additive backfill against drift and loss of existing business data.
+-- These transaction-local checks do not create another persistent data owner.
+lock table public.work_orders, public.photos in share row exclusive mode;
+
+do $preflight$
+begin
+  if to_regclass('public.work_order_runs') is not null
+     or to_regclass('public.work_order_assignments') is not null then
+    raise exception 'Phase 3A run/history schema already exists; reconcile before applying';
+  end if;
+  if not exists (
+    select 1 from pg_trigger
+    where tgrelid = 'public.work_orders'::regclass
+      and tgname = 'work_orders_set_updated_at' and tgenabled = 'O'
+  ) then
+    raise exception 'Expected work-order timestamp trigger is missing or disabled';
+  end if;
+  perform set_config('fwh.phase3a_wo_hash', (
+    select md5(coalesce(string_agg(to_jsonb(w)::text, '|' order by id), ''))
+    from public.work_orders w
+  ), true);
+  perform set_config('fwh.phase3a_photo_hash', (
+    select md5(coalesce(string_agg(to_jsonb(p)::text, '|' order by id), ''))
+    from public.photos p
+  ), true);
+end;
+$preflight$;
 
 alter table public.work_orders
   add column current_run_id uuid,
@@ -334,7 +361,8 @@ begin
   end if;
 
   -- Receipt may be acknowledged after a run is already field-complete. Update
-  -- the most recent matching assignment, not only an open assignment.
+  -- the current matching assignment or its FIELD_COMPLETE closure. Historical
+  -- reassignment rows must not compete when timestamps happen to be equal.
   if new.assignment_received_at is distinct from old.assignment_received_at
      and new.assigned_user_id is not null then
     update public.work_order_assignments a
@@ -344,6 +372,10 @@ begin
        from public.work_order_assignments a2
        where a2.run_id = new.current_run_id
          and a2.assigned_user_id = new.assigned_user_id
+         and (
+           a2.assignment_ended_at is null
+           or (new.field_status = 'FIELD_COMPLETE' and a2.end_reason = 'FIELD_COMPLETE')
+         )
        order by a2.assignment_started_at desc, a2.created_at desc
        limit 1
      );
@@ -444,3 +476,50 @@ with check (
       and wo.field_status <> 'CANCELLED'
   )
 );
+
+
+-- Any failed invariant aborts the migration transaction rather than committing
+-- a partial identity backfill or changed historical business facts.
+do $verify_backfill$
+begin
+  if current_setting('fwh.phase3a_wo_hash') is distinct from (
+    select md5(coalesce(string_agg(
+      (to_jsonb(w) - 'current_run_id' - 'current_run_sequence')::text,
+      '|' order by id), '')) from public.work_orders w
+  ) then
+    raise exception 'Phase 3A changed existing work-order business data';
+  end if;
+  if current_setting('fwh.phase3a_photo_hash') is distinct from (
+    select md5(coalesce(string_agg((to_jsonb(p) - 'run_id')::text, '|' order by id), ''))
+    from public.photos p
+  ) then
+    raise exception 'Phase 3A changed existing photo business data';
+  end if;
+  if (select count(*) from public.work_orders) <> (select count(*) from public.work_order_runs)
+     or (select count(*) from public.work_orders where assigned_user_id is not null)
+        <> (select count(*) from public.work_order_assignments)
+     or exists (
+       select 1 from public.work_orders w
+       left join public.work_order_runs r on r.id = w.current_run_id
+       where r.id is null or r.work_order_id <> w.id or r.organization_id <> w.organization_id
+          or r.run_sequence <> 1 or w.current_run_sequence <> 1
+          or r.field_status <> w.field_status
+          or r.current_assignee_user_id is distinct from w.assigned_user_id
+          or r.assignment_received_at is distinct from w.assignment_received_at
+          or r.started_at is distinct from w.started_at
+          or r.field_completed_at is distinct from w.field_completed_at
+          or r.created_at <> w.created_at or r.updated_at <> w.updated_at
+     ) then
+    raise exception 'Phase 3A Run-1/assignment backfill integrity check failed';
+  end if;
+  if exists (
+    select 1 from public.photos p join public.work_orders w on w.id = p.work_order_id
+    where p.run_id is distinct from w.current_run_id
+  ) or not exists (
+    select 1 from pg_trigger where tgrelid = 'public.work_orders'::regclass
+      and tgname = 'work_orders_set_updated_at' and tgenabled = 'O'
+  ) then
+    raise exception 'Phase 3A photo binding/timestamp-trigger verification failed';
+  end if;
+end;
+$verify_backfill$;

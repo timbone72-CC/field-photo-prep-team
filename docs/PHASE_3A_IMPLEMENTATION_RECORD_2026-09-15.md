@@ -92,7 +92,7 @@ Create a narrow `work_order_assignments` table with:
 
 Existing pre-Phase-3 reassignment history cannot be reconstructed from the current projection. Backfill therefore records the current known assignment as the Run-1 baseline without inventing earlier history.
 
-Receipt synchronization updates the most recent matching assignment row, including an already-closed `FIELD_COMPLETE` assignment when receipt is acknowledged after field completion.
+Receipt synchronization selects the current open assignment or its `FIELD_COMPLETE` closure. Old reassignment records cannot compete when timestamps are equal, including when a contractor returns to the same run.
 
 ### Projection synchronization
 
@@ -143,7 +143,7 @@ No authorization rule uses user-editable metadata. Organization and role remain 
 
 Current Supabase platform changes require explicit grants for newly exposed public tables. The migration therefore grants only the exact authenticated `SELECT` surface required by the Android client and leaves writes to trusted server-side paths/service role.
 
-The staged SQL remains under `supabase/drafts/` until it is applied through the governed Supabase migration action. After application, the exact generated migration version is mirrored under `supabase/migrations/`; no hand-invented migration timestamp is used.
+The governed migration action applied `20261002221935_phase_3a_run_foundation` and the narrow advisor repair `20261002222320_phase_3a_index_and_rls_advisor_repair` to FWH on 2026-10-02. Both exact applied SQL statements are mirrored under `supabase/migrations/`; the draft is removed. Versions come from live migration history, not invented timestamps.
 
 ## Android Room design
 
@@ -230,7 +230,7 @@ Implemented focused coverage includes:
 - Android CI runs the Phase 3A JVM test suite before APK assembly;
 - generated Room v1 schema is exported as CI evidence and committed.
 
-Still required at the Supabase gate:
+Supabase gate completed on 2026-10-02 (evidence below):
 
 - migration applied through the governed migration action;
 - exact applied migration mirrored into repository history;
@@ -293,3 +293,29 @@ Before live application, capture the exact pre-migration schema evidence. If the
 - Physical evidence: **PENDING**; do not install this migration-dependent candidate before the governed database gate passes.
 - Merge: **NOT MERGED / APPROVAL PENDING**.
 - Next exact gate after automated PASS: review/apply the staged Phase 3A migration through the governed migration action, mirror its returned version, verify Run-1/history/photo binding, timestamp preservation and real authorization/RPC behavior, then run advisors. After backend parity, stage one cache/restart/Sign Out/owner-isolation phone gate. Phase 3B/3C and phone automatic refresh are outside this checkpoint.
+
+
+## Database-gate authorization / preflight — 2026-10-02
+
+The operator replied **Next** to Phase 3A database migration and verification after the automated gate passed on `ee1e0c509115eac988028986c8974e7c8f2229cc`. This authorizes applying the reviewed additive migration to the existing FWH project `vyocaujuwrivoqynvitm`, verifying the affected boundaries and mirroring the actual applied version. PR #17 remains the sole Level-3 implementation line; merge approval and the physical gate remain pending.
+
+Preflight confirms main remains `778dfc5f67e47157f6b154d5476b26ae427bad55`, the target is the separate healthy Team/FWH Postgres 17.6 project, and the run/history schema is absent. Baseline has 6 WOs, 5 assigned WOs and 0 photo rows. Capture schema/trigger/RPC/policy evidence plus business-data and timestamp checksums before DDL. The additive backfill locks the affected tables, snapshots existing business facts transaction-locally, and raises on changed data, broken Run-1 projection, photo binding or failure to restore the timestamp trigger.
+
+The reviewed draft also resolves an assignment-instance ambiguity: identical timestamps from repeated reassignment must not let old reassignment records compete with the active assignment or its FIELD_COMPLETE closure for receipt synchronization. The staged controlled-context regression uses existing accepted test users, custom WO numbers and transaction/subtransaction rollback; it does not consume the business numbering sequence, change Auth accounts or alter existing WOs/photos.
+
+Before/after advisors distinguish baseline notices from new findings. Existing baseline notices are the intentionally inaccessible contractor-invitation table (INFO), disabled leaked-password protection (WARN), and unused-index INFO notices. No Auth-setting change is included in this database gate. Rollback remains transaction abort on failed backfill; after a successful application, preserve additive history and use a proven narrow forward repair if needed, never delete history to revert the APK.
+
+
+## Database gate result — 2026-10-02 — PASS
+
+- Target: FWH project `vyocaujuwrivoqynvitm`; original FPP unchanged.
+- Actual live migrations: `20261002221935_phase_3a_run_foundation` and `20261002222320_phase_3a_index_and_rls_advisor_repair`. The foundation mirror was compared byte-for-byte with the stored migration statement; the repair mirrors its stored SQL. No migration is reapplied to the live project.
+- Backfill: 6 WOs → 6 Run-1 rows; 5 known assignments → 5 assignment-history rows; 0 photos remain 0. All 6 current-run pointers, ownership, organization, status, receipt/start/completion and created/updated timestamps match their existing WO projection. The original business-row checksum (which includes all original timestamps) remains `4b7f14d479184e5a86b12e4182c84a9a`; photo checksum remains `d41d8cd98f00b204e9800998ecf8427e`. The timestamp trigger is enabled. The same business checksum was verified after both fixture runs.
+- Controlled database authorization/RPC gate: **PASS**, then **PASS** after advisor repair. `tests/supabase/phase_3a_database_gate.sql` uses actual PostgreSQL authenticated/anonymous roles, RLS and controlled `app_metadata` claims with existing accepted test users. This is the contract's equivalent controlled project context, not a signed-JWT/client-network or physical-device claim.
+- Covered: Admin creation and invalid assignee rejection; wrong-role Admin action; tenant/owner read isolation; no broad direct writes; idempotent receipt/start/completion; ASSIGNED reassignment and receipt reset; previous-owner denial; in-progress decline/approve consent preserving run/start identity; A→B→A history and late receipt on the completed current assignment; allowed exact photo metadata identity and denied mismatched run/WO/owner; wrong-org/wrong-role receipt and anonymous history denial; immediate validation of the deferred WO/run constraint.
+- Fixtures use custom numbers and a caught rollback sentinel inside an outer rollback transaction. All temporary organizations/WOs/runs/history/photo metadata were removed; no business sequence consumption, existing WO/photo mutations, Auth-account changes, files or uploads.
+- Initial post-DDL advisors identified 2 uncovered composite FKs and 3 claim-evaluation performance warnings. The narrow forward repair adds covering indexes, replaces the superseded single-column photo index, and wraps the JWT function itself in a scalar SELECT while preserving access semantics. Required gate reran successfully.
+- Final advisors: no new security warning; performance has only 16 unused-index INFO notices, expected for lightly used/new indexes. Existing invitation-table INFO and [disabled leaked-password protection WARN](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) remain baseline, outside this gate. No Auth setting is changed. [Unused-index guidance](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index).
+- Repository next gate: publish these mirrors, fixture regression and records on the existing PR #17; final Android/Admin/governance CI must pass on that exact head. Record the final SHA/results in PR metadata without another runtime edit.
+- Physical result: **PENDING**. After exact-head CI, next is the single Phase 3A phone cache/restart/Sign Out/owner-isolation gate described above. No Phase 3B/3C, phone auto-refresh, camera or Drive behavior is authorized.
+- Merge: **DRAFT / NOT MERGED / explicit operator approval still pending**. Runtime rollback remains current main `778dfc5f67e47157f6b154d5476b26ae427bad55`; preserve applied database history and use a narrow forward repair if a demonstrated defect arises.

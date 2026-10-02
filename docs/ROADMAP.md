@@ -703,7 +703,7 @@ Make assigned work reliable with no internet, including restart, while introduci
 
 ## 3A — Server run foundation + Room cache
 
-Resume status (2026-10-02): the operator authorized reconciliation of existing draft PR #17 with current FWH main and completion of its automated checks. Database application/verification, physical cache/restart proof and explicit Level-3 pre-merge approval remain pending. Offline Room capability is not shipped. See `docs/PHASE_3A_IMPLEMENTATION_RECORD_2026-09-15.md` for the authoritative checkpoint. Phase 3B/3C are not authorized by this reconciliation.
+Resume status (2026-10-02): existing draft PR #17 is reconciled with current FWH main. The operator authorized the Phase 3A database gate; both applied migration versions are mirrored and controlled database/RLS/RPC, backfill-preservation and advisor verification passed. Final exact-head CI precedes the single phone cache/restart/Sign Out/owner-isolation gate. Physical proof and explicit Level-3 pre-merge approval remain pending; offline Room capability is not shipped. See `docs/PHASE_3A_IMPLEMENTATION_RECORD_2026-09-15.md` for the authoritative checkpoint. Phase 3B/3C and phone automatic refresh remain outside this scope.
 
 Before the Android offline model depends on it:
 
