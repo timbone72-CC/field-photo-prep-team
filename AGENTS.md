@@ -1,6 +1,6 @@
 # Field Work Hub — Agent Entry Point
 
-Field Work Hub (FWH) is the separate multi-user contractor dispatch, offline fieldwork and protected-photo-delivery project. Its technical repository retains the historical `field-photo-prep-team` slug. The working original single-user Field Photo Prep (FPP) is **read-only reference material**, never an FWH modification or experiment surface.
+Field Work Hub (FWH) is the separate multi-user contractor dispatch, offline fieldwork and protected-photo-delivery project. Its canonical repository is `timbone72-CC/field-work-hub`; `field-photo-prep-team` is the historical slug. The working original single-user Field Photo Prep (FPP) is **read-only reference material**, never an FWH modification or experiment surface.
 
 ## First read — every FWH work session
 

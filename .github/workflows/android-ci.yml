@@ -53,7 +53,12 @@ jobs:
           test -n "${AAPT}"
           "${AAPT}" dump badging "${APK}" | tee apk-badging.txt
           grep -q "package: name='com.inandout.fieldphotoprep.team.internal'" apk-badging.txt
-          grep -q "application-label:'Field Photo Prep Team Internal'" apk-badging.txt
+          grep -q "application-label:'Field Work Hub Internal'" apk-badging.txt
+          grep -q "application:.*icon='.*ic_launcher" apk-badging.txt
+          unzip -Z1 "${APK}" > apk-resources.txt
+          grep -q 'ic_launcher_foreground.png' apk-resources.txt
+          grep -q 'ic_launcher_monochrome.png' apk-resources.txt
+          grep -q 'ic_launcher.xml' apk-resources.txt
           "${AAPT}" dump permissions "${APK}" | tee apk-permissions.txt
           grep -q "android.permission.INTERNET" apk-permissions.txt
       - name: Verify stable Team test APK signer
@@ -82,9 +87,9 @@ jobs:
           if actual != expected:
               sys.exit(1)
           PY
-      - name: Upload Phase 2 contractor APK
+      - name: Upload FWH internal branding APK
         uses: actions/upload-artifact@v4
         with:
-          name: field-photo-prep-team-phase2-consent-apk
+          name: field-work-hub-internal-branding-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

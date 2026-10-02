@@ -175,3 +175,27 @@ No token, password, Contractor/customer email, account identifier or actual gene
 Stop new setup issuance first. Reconcile any links issued after the switch; do not delete invited Auth identities or invitation rows as rollback. Restore Team invitation override to **https://timbone72-cc.github.io/field-photo-prep-team/contractor-invite.html** and Site URL to **https://timbone72-cc.github.io/field-photo-prep-team/**, retaining both allowed setup redirects. Restore the same repository's old slug only as part of recovery and explicitly redeploy the previously verified dashboard source (rollback baseline `59123157e01f04cfa170c7a3eaa3e731d801bcc5`) at the restored path. Revert the narrow fallback source change when applicable. Verify both page assets and a real setup link before resuming issuance; a rename back alone is insufficient proof of recovery.
 
 This cutover neither changes nor deletes original FPP, Android app data, work orders, photos, Drive objects, role/org metadata or seat limits.
+
+## Stage 2 closeout and Stage 3 implementation — 2026-10-01
+
+PR #28 was explicitly approved and merged at `abc7c1b0f0d300923b5e9aba0ec6b48cc7af1fcc`; its PR record contains the actual approval and accepted provider-test deferral. Main Android `36958739201` and dashboard `36958739117` passed. The operator explicitly deferred fresh new-address setup activation until the next Contractor onboarding rather than change the two-seat cap or either existing account. This is **DEFERRED**, not PASS, and supersedes the previous source checkpoint's remaining provider/pre-merge gate.
+
+At **22:13:47 America/Chicago**, the operator supplied laptop terminal readback for `/tmp/fwh-admin-test` showing origin **https://github.com/timbone72-CC/field-work-hub.git**. Stage 2 repository/Pages/Auth cutover is closed with that accepted test deferral; the current settings/browser evidence boundaries above remain unchanged.
+
+### Level 2 branding scope and rollback
+
+Goal: prevent confusion between the separate FWH and FPP apps using the exact approved icon and visible labels. Scope key: **fwh-visible-branding**. Authoritative branch: `feat/fwh-visible-branding`, baseline/rollback `abc7c1b0f0d300923b5e9aba0ec6b48cc7af1fcc`. Operator's existing icon/label request and October 1 **22:16 Next** authorize this Level 2 Stage 3 implementation. Required packs: AGENTS, GOVERNANCE, PROJECT_PROFILE, RULE_INDEX, CHANGE_CONTROL, TESTING, INTEGRATION, phase-staging doctrine, approved Phase 2 and this exact rollout design.
+
+Owning changes: Android manifest icon reference, launcher PNG/adaptive/monochrome resources, visible string labels, matching APK label/resource CI assertions and artifact labels; dashboard/setup titles/branding and favicon; README, dashboard README, AGENTS and PROJECT_PROFILE current repository/status wording; this durable rollout record. Android business Java, package/version/build settings, stable signer and private storage remain unchanged. Dashboard JavaScript, form IDs, script/style cache paths, authorization, session behavior and existing FPP-prefixed WO numbers remain unchanged. No Supabase/provider/Drive change or PR #17 merge.
+
+### Exact source and derived assets
+
+Approved source `libfile_6c901912f4488191a4f62c08105aedd4` is retained byte-for-byte as `docs/assets/fwh-navigation-network-source.png`, **1254 × 1254**, SHA-256 **32e9cc1f512327de3ccffa1e766039bf0f00d5a694d0fec6729a63b28f6c3c98**. It is the existing FWH lettering/network/pin artwork, not a redesign.
+
+Launcher assets trim only connected white exterior, proportionally scale the approved artwork and keep a 66dp foreground inside a 108dp adaptive layer. Five legacy density outputs, color foreground/background, Android 13 monochrome silhouette and version-qualified adaptive definitions are provided. Circular and rounded mask renders were inspected; FWH lettering, nodes and pin remain recognizable. The monochrome derivative removes exterior/background pixels and retains the approved lettering/network silhouette. The browser favicon derives from the same artwork. These rendered masks are focused asset evidence, not a physical phone observation.
+
+### Remaining branding gate
+
+Required CI must pass on the exact final PR head; verify the built APK package, visible label, launcher resources and existing signer. Install/update over the current FWH package without uninstalling or clearing data, inspect the launcher icon/name and confirm the existing signed-in work list is retained. Do not repeat receipt/reassignment or create a new Contractor. Verify branded dashboard/setup pages after their normal deployment. Record final head/artifact, real install observation, merge and deployment in the owning PR.
+
+Rollback is a narrow revert of this branding change and an internal APK built with the same package/signer. Preserve app data and existing accounts/work orders/photos; do not uninstall, clear storage, alter provider URLs or mutate original FPP.
