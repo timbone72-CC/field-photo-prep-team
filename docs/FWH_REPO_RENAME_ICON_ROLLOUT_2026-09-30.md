@@ -133,3 +133,45 @@ Next gate: open the existing live Admin page, sign in as the existing Team Admin
 Keep the effective invite destination on the current path until the renamed Pages site is deployed and verified. Before rename, independently reconcile hosted settings/effective redirect when access returns, recheck unresolved invitation/Auth counts, and obtain explicit approval for the concrete Level 3 cutover. PR #20 merge approval remains pending.
 
 For configuration rollback, pause new link issuance and reconcile any links issued since preparation before restoring the recorded prior Site URL `http://localhost:3000` and empty additional list; those prior values are evidence, not a known-working production setup. Do not delete Auth identities or invitation rows as part of this URL rollback. For the later repository/Pages cutover, use the original narrow cutover rollback above and verify recovery through a real link.
+
+## Approved cutover checkpoint — 2026-10-01
+
+This checkpoint supersedes earlier pending setup, PR #20 merge, repository-name and URL-setting handoffs above. Earlier checkpoints remain historical evidence.
+
+### Classification and ownership
+
+- Goal: reconcile the approved FWH repository/Pages/Auth address switch and the invitation source fallback.
+- Scope key: fwh-invite-redirect-cutover.
+- Change level: Level 3.
+- Authoritative branch: `fix/fwh-invite-redirect-cutover`, based on main `59123157e01f04cfa170c7a3eaa3e731d801bcc5`.
+- Affected source: only this rollout record and `supabase/functions/admin-invite-contractor/index.ts`'s fallback URL.
+- Required packs: AGENTS, GOVERNANCE, PROJECT_PROFILE, RULE_INDEX, CHANGE_CONTROL, TESTING, INTEGRATION, phase-staging doctrine, approved roadmap contractor lifecycle/Phase 2/8B and this exact rollout plan.
+- Protected behavior: original FPP separation; existing server role/org/seat/assignment authority; Android package/signer/data; setup credentials; automatic Admin refresh; immutable business IDs and FPP-prefixed WO numbers.
+- PR #20 is merged and its onboarding implementation remains authoritative. PR #17 remains an independent draft and is not merged or changed by this cutover. Current-facing branding/icon/document-link maintenance remains Stage 3.
+
+### Approval and verified external state
+
+1. Explicit operator approval for the repository rename, new Pages deployment, then Team invitation/Site URL switch and rollback was received **2026-10-01 20:35:42 America/Chicago**.
+2. Setup/password/activation/assignability/Android login and compact Phase 2 reassignment/receipt evidence passed before cutover; PR #20 was approved and squash-merged at `59123157e01f04cfa170c7a3eaa3e731d801bcc5`. Its main Android run `36950688130` and dashboard run `36950688105` passed.
+3. Immediate pre-rename read at **2026-10-02T01:36:14.416572Z** found **0** unresolved `RESERVED/SENT/PROBLEM/CANCELLING` invitations, **0** confirmed-but-unactivated invitations and **0** unconfirmed Auth identities with a Team invitation marker. New link issuance was paused for the switch.
+4. Operator performed the GitHub rename. Connector readback after the 21:41 handoff confirmed canonical `timbone72-CC/field-work-hub`, unchanged repository ID **1368673158**, default `main`, preserved branches/history and open PR #17 at `cb703406d0765e5cd7f0583fe94e45c2ee8b32e0`.
+5. Ruleset **24245891**, FWH Main Protection, remains active with no bypass actors; PR/resolved discussion requirements, deletion/force-push blocks and required GitHub Actions contexts **governance**, **build**, **dashboard** are preserved.
+6. The operator dispatched the existing Pages workflow on main. **Run 36956963686**, job **110681967550**, passed checkout/configuration/upload/deployment for `59123157e01f04cfa170c7a3eaa3e731d801bcc5`. The deploy log reports **https://timbone72-cc.github.io/field-work-hub/**.
+7. At **21:47:51 America/Chicago**, the operator reported the new Admin URL worked after sign-in and showed the work orders. At **21:51:26**, the operator reported the new plain setup page showed its valid-link-required guard. These are operator browser observations; the attached screenshot was unavailable locally. Public retrieval failure is not treated as a site failure.
+8. At **21:52:46**, the operator confirmed saving Site URL **https://timbone72-cc.github.io/field-work-hub/** while retaining both the old and new exact setup redirect allowlist entries.
+9. At **21:54:45**, the operator reported successfully creating `TEAM_INVITE_REDIRECT_URL` with the instructed value **https://timbone72-cc.github.io/field-work-hub/contractor-invite.html** in Team project `vyocaujuwrivoqynvitm`. This is operator-reported configuration evidence, not an independent secrets-value API readback. The URL is public configuration, not a credential.
+10. Deployed invitation v3 already reads that environment override. The sole runtime source change replaces the old fallback literal with the new URL; CORS remains **https://timbone72-cc.github.io**. No extra Edge deployment is claimed. With the override set, live destination is configured to the new URL; actual newly generated link/activation remains the next provider check.
+
+### Verification boundary and exact next gate
+
+The one-literal source diff preserves all existing invitation/reservation/cancellation logic. Readback/diff and exact-head governance/build/dashboard results belong in the owning PR; no new CI history is claimed here before those runs finish.
+
+**Remaining cutover gates:** one real newly generated setup link must reach the new page and activate correctly; exact final-head CI and explicit Level 3 source-merge approval; developer laptop origin update; final source/configuration reconciliation. The new blank-page guard proves asset loading, not real invite activation. Do not repeat unrelated completed assignment/receipt or Android tests.
+
+No token, password, Contractor/customer email, account identifier or actual generated setup URL is recorded here. No new fixture has been created by this source update. Preserve any subsequently issued legitimate link and pending account until its state is reconciled.
+
+### Concrete rollback
+
+Stop new setup issuance first. Reconcile any links issued after the switch; do not delete invited Auth identities or invitation rows as rollback. Restore Team invitation override to **https://timbone72-cc.github.io/field-photo-prep-team/contractor-invite.html** and Site URL to **https://timbone72-cc.github.io/field-photo-prep-team/**, retaining both allowed setup redirects. Restore the same repository's old slug only as part of recovery and explicitly redeploy the previously verified dashboard source (rollback baseline `59123157e01f04cfa170c7a3eaa3e731d801bcc5`) at the restored path. Revert the narrow fallback source change when applicable. Verify both page assets and a real setup link before resuming issuance; a rename back alone is insufficient proof of recovery.
+
+This cutover neither changes nor deletes original FPP, Android app data, work orders, photos, Drive objects, role/org metadata or seat limits.
