@@ -5,7 +5,7 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const INVITE_REDIRECT_URL =
   Deno.env.get('TEAM_INVITE_REDIRECT_URL') ??
-  'https://timbone72-cc.github.io/field-photo-prep-team/contractor-invite.html';
+  'https://timbone72-cc.github.io/field-work-hub/contractor-invite.html';
 
 const ALLOWED_ORIGIN = 'https://timbone72-cc.github.io';
 
