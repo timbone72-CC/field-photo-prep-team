@@ -1,6 +1,6 @@
 # Field Work Hub — Phase 4 Implementation Plan — 2026-10-03
 
-Status: **APPROVED SCOPE — RUNTIME IMPLEMENTED; AUTOMATED/BACKEND/ARTIFACT PASS; LOCAL ADMIN AND DEVICE GATE PENDING**
+Status: **APPROVED SCOPE — RUNTIME IMPLEMENTED; AUTOMATED/BACKEND/ARTIFACT PASS; ADMIN CONFIGURATION PASS; DEVICE GATE PENDING**
 
 Current runtime evidence and staging authority: [PHASE_4_IMPLEMENTATION_RECORD_2026-10-03.md](PHASE_4_IMPLEMENTATION_RECORD_2026-10-03.md). Original planning classification/history below remains historical.
 
@@ -187,7 +187,7 @@ PASS: configured and simple/all-off behavior works, repeated capture remains qui
 
 Phase 4 completes only when the whole approved behavior, focused/final exact-head automation, deployed migration/grant/advisor parity, verified recovery, combined physical gate, explicit Level 3 merge approval and runtime integration agree. Keep photos **WAITING / delivery pending** for Phase 5; no claim of remote delivery/cleanup. Phase 5 consumes the same UUID/item/revision/frozen-set facts and adds company-authorized bytes/destination/retry, preserving this counting rule. Future Phase 6 derives Total/item counts from server-known facts, never phone-only guesses.
 
-Current status: **runtime/backend/candidate/recovery automation PASS; local Admin startup/login, combined physical gate, explicit Level 3 merge approval, runtime integration and subsequent main publication PENDING**. Exact tested runtime and evidence are in the implementation record. Next exact checkpoint: stage its verified Admin page and APKs, then execute the one grouped laptop/phone gate. No new letter-level plan approval; stop only for material new decisions, failed evidence, the genuine device boundary or separate explicit Level 3 pre-merge approval.
+Current status: **runtime/backend/candidate/recovery automation PASS; local Admin login/template/custom/all-off creation and copy isolation PASS; phone portions of the combined physical gate, explicit Level 3 merge approval, runtime integration and subsequent main publication PENDING**. Exact tested runtime and evidence are in the implementation record. Next exact checkpoint: install the retained verified candidate update and execute the phone portions of the same grouped laptop/phone gate. No new letter-level plan approval; stop only for material new decisions, failed evidence, the genuine device boundary or separate explicit Level 3 pre-merge approval.
 
 ## Operator clarification — optional walking order — 2026-10-03 15:15 America/Chicago
 
