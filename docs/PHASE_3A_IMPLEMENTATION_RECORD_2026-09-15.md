@@ -2,7 +2,7 @@
 
 Date: 2026-09-15
 
-Status: **PHASE 3A DATABASE / AUTOMATED / PHONE GATES PASSED — LEVEL 3 — MERGE APPROVAL PENDING**
+Status: **PHASE 3A GATES PASSED — LEVEL 3 — OPERATOR MERGE APPROVAL RECORDED**
 
 Branch: `feat/phase-3a-run-room-foundation`
 
@@ -342,3 +342,12 @@ Read-only FWH receipt check after the phone gate (2026-10-03 UTC): 5 current non
 Evidence is accepted once from the operator's confirmations; no physical test is inferred from CI. Test WO data is retained as the existing disposable assignment baseline, not deleted during this record-only checkpoint. Original FPP, Drive, Auth configuration and accounts are unchanged. Full Phase 3 offline Start/Finish/reconciliation/WorkManager behavior remains unimplemented and unproven.
 
 Next exact gate: final PR/CI review and explicit operator approval before merging PR #17. Current main/runtime rollback remains `778dfc5f67e47157f6b154d5476b26ae427bad55`; preserve additive database history and local evidence. Merge is **NOT APPROVED / NOT MERGED**. No Phase 3B/3C or phone automatic-refresh implementation is authorized by the passing phone gate.
+
+
+## Operator merge approval / integration handoff — 2026-10-02 22:33 America/Chicago
+
+The operator replied **approved** to the explicit request to merge PR #17 after the database, phone and final automated gates passed. This is the required Level-3 pre-merge approval, distinct from earlier implementation authorization. Reviewed handoff head: `55b341eb6c226a6cb6c3a0eecf588f1f85851ff3`; full Android/Admin/governance checks passed and there are no review threads or change requests. This final approval checkpoint changes only documentation and the project profile; all runtime files remain identical to the phone-tested `3191dd0ec29ec8e0f29e7d748ed8b8e54bdd6131`.
+
+[PR #17](https://github.com/timbone72-CC/field-work-hub/pull/17) is the authoritative merge-outcome record, including its final head, result and merge SHA. Merge only the approved authoritative branch into unchanged main `778dfc5f67e47157f6b154d5476b26ae427bad55`, with an expected-head check and successful final checks; do not bypass branch protection or rewrite main. Retain the existing tested APK and accept the recorded phone evidence without another installation or repeat gate.
+
+Phase 3A run identity, durable Room downloads and session/cache isolation have passed their completion gates. Full Phase 3 remains incomplete. After successful integration, the next scope is a governed Phase 3B implementation-plan review for offline Start/Finish, run-bound idempotent acceptance and preservation/reconciliation before runtime work. This merge approval does not authorize Phase 3B/3C, WorkManager, automatic phone refresh, camera or Drive delivery. Original FPP remains untouched. Retain existing disposable WOs and protected local evidence; no cleanup or Auth changes accompany this merge. Runtime rollback remains `778dfc5f67e47157f6b154d5476b26ae427bad55` with additive backend history preserved.

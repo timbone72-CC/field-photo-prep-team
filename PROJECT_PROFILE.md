@@ -11,11 +11,11 @@
 
 ## Authoritative systems
 
-**GitHub:** completed FWH main; each in-progress scope's one authoritative branch/PR and durable record. Onboarding PR #20, Admin automatic refresh PR #27 and the repository/redirect cutover PR #28 are merged. The new-address setup activation test is explicitly deferred until the next Contractor onboarding because both seats are occupied. Phase 3A PR #17 remains an independent draft; always recheck its actual state.
+**GitHub:** completed FWH main; each in-progress scope's one authoritative branch/PR and durable record. Onboarding PR #20, Admin automatic refresh PR #27 and the repository/redirect cutover PR #28 are merged. The new-address setup activation test is explicitly deferred until the next Contractor onboarding because both seats are occupied. Phase 3A PR #17 owns the completed run/Room/session work; its database, automated and phone gates passed and explicit merge approval was recorded on 2026-10-02. Recheck PR #17 for its final integration result; do not restart that implementation line.
 
 **Team Supabase/Auth:** authenticated user and server-controlled organization/role, seat/invitation lifecycle, server-approved current assignment/reassignment, work-order and run identity, accepted field state and synchronized metadata. Enforce RLS and narrow server-authorized operations. Never ship elevated keys to clients.
 
-**Android local persistence:** after the approved Phase 3A implementation/gates, Room is authoritative for which exact authenticated user's assignments and pending local evidence have durably reached this device. Before Phase 3A merge, do not claim offline Room/restart capability is shipped. Local pending work/photos are not proof of server acceptance.
+**Android local persistence:** the verified Phase 3A Room implementation is authoritative for which exact authenticated user's assignments and pending local evidence have durably reached this device. Use PR #17’s actual merge state to distinguish the tested internal candidate from integration on main. Local pending work/photos are not proof of server acceptance.
 
 **Company-controlled HNP Google Drive:** authoritative for exact confirmed remote objects/folder IDs. First-version contractor access is **server-mediated**: contractor phones do not acquire the company's reusable Drive credentials or use FPP's per-device SAF folder-picker model. Supabase remains authoritative for Team business and assignment state.
 
