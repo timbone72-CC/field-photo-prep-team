@@ -239,47 +239,31 @@ Renaming/editing a template changes future defaults only. Existing WOs/runs keep
 
 If a reusable template has already been used, remove it from future selection by **archiving/deactivating** it rather than destructively rewriting history.
 
-## Requirement shape
+## Requirement shape — approved Phase 4 amendment
 
-A run requirement snapshot may contain:
+Whole-phase plan: [PHASE_4_IMPLEMENTATION_PLAN_2026-10-03.md](PHASE_4_IMPLEMENTATION_PLAN_2026-10-03.md). The operator approved the discussed Admin-configurable photo-item workflow and continuation on **2026-10-03 at 15:00:44 America/Chicago**. This deliberately replaces the earlier numeric-only shape, overlapping Stage/Wide credit and named-item exclusion.
 
-- minimum total photos;
-- Before enabled + minimum;
-- During enabled + minimum;
-- After enabled + minimum;
-- Wide Angle enabled + minimum.
+A run snapshot contains an independently enabled **Total** minimum and a flat ordered list of photo items. Each item has a stable UUID, name, enable checkbox, minimum and optional short instruction; stage/framing context can describe that item's capture. Admin can choose reusable defaults, change every on/off/count for one WO, add a custom item and put items in walking order before Start. Template edits/rename/archive never rewrite existing run snapshots.
 
 Rules:
 
-- all counts are nonnegative;
-- disabled stage count is treated as zero;
-- Before/During/After are mutually exclusive stage labels for a captured photo;
-- therefore `minimum total` must be at least the sum of required Before + During + After minimums;
-- Wide Angle is an overlapping designation, not another additive total;
-- one photo may satisfy its stage requirement and Wide Angle requirement simultaneously;
-- stage minimums are sub-requirements of total, not “total plus all stage counts.”
+- each photo belongs to **one enabled item only**, or **Extra photos**;
+- each unique valid photo counts once toward Total; Extra satisfies no named item;
+- no picture simultaneously satisfies Kitchen/Living Room, During/corner/Wide or any pair of required items;
+- combined labels such as `Before — front-left corner — wide` describe one item, not overlapping obligations;
+- every requirement, including Total, can be disabled by Admin per WO; only enabled requirements block Finish;
+- with all counts off, voluntary photos remain available and no photo-count minimum blocks Finish;
+- counts are whole nonnegative minimums, never maximum capture limits; required enabled items need positive counts and clear distinct names;
+- minimum distinct photos = the larger of enabled Total and the sum of enabled item minima;
+- show specified minima and additional photos needed for Total explicitly, without silently altering Admin's configuration; additional photos may belong to any enabled item or Extra;
+- inspector covers additional blind spots using Extra photos unless Admin specifies separate items;
+- no image-content classification/judging or generic contractor bypass.
 
-Examples:
+Reusable preservation/repair defaults may include separate Before, During and After items; inspection defaults may omit stages. Admin determines actual items/counts for each WO. HNP mowing examples are illustrative, not hard-coded or verified company policy.
 
-- Interior Inspection may require at least 100 total and no B/D/A.
-- Yard Cut normally uses Before/During/After and may also require Wide Angle.
-- Trash removal, tree work, lock replacement, and similar preservation/repair work normally use Before/During/After.
+## Simple custom photo list in v1
 
-## Default stage rule
-
-Working product rule:
-
-- preservation/repair templates normally enable `BEFORE → DURING → AFTER`;
-- inspections are the expected exception and normally use total-photo + optional Wide Angle without B/D/A;
-- this remains a configurable template default, not hard-coded law.
-
-## Named-shot checklist is deliberately out of v1
-
-Do **not** build a named-photo checklist system and do not pre-build dormant schema/UI hooks for it.
-
-Most contractors are expected to know the specific shots required.
-
-If repeated field evidence later shows missed specific shots are a real problem, design a named-shot feature deliberately then.
+The operator's concrete coverage examples justify the narrow flat named-item workflow in Phase 4. Keep it connected directly to CameraX: tap item, take multiple shots, Done, choose another item. Show instructions, captured/needed counts and automatic completion checkmarks. Completed items remain reachable; Extra photos is always available. Do not expand this into conditional forms, category hierarchies, report builders or AI.
 
 ---
 
@@ -451,7 +435,7 @@ Admin sets the reopened run's new requirement snapshot before redispatch.
 
 The new run starts at **zero** for all of its own photo counters.
 
-Old photos remain preserved/reference history but do not satisfy the new run's Total, Before, During, After, or Wide Angle requirements.
+Old photos remain preserved/reference history but do not satisfy any new-run Total or named-item requirements.
 
 Example:
 
@@ -464,7 +448,7 @@ Example:
 Two truths remain separate:
 
 **Field requirement satisfied / FIELD_COMPLETE**
-- current run has enough valid protected captures to satisfy its frozen numeric requirement snapshot;
+- current run has enough valid protected captures to satisfy its frozen Total/item requirement snapshot;
 - contractor has performed Finish Field Work locally;
 - server accepts completion once required metadata/authorization is synchronized.
 
@@ -845,11 +829,13 @@ Completion gate: **retained 3A proof plus multiple assignments, offline Start/Fi
 
 ---
 
-# Phase 4 — Photo requirements, CameraX capture, protection, and preparation — PLANNED
+# Phase 4 — Photo requirements, CameraX capture, protection, and preparation — SCOPE APPROVED / RUNTIME NOT STARTED
 
 ## Goal
 
-Add the programmed photo rules and the proven FPP multi-shot field camera without weakening run identity or offline safety.
+Add Admin-controlled Total and custom photo-item rules plus the proven FPP multi-shot field camera without weakening run identity or offline safety.
+
+Whole numbered-phase scope, authority, failure/recovery, dependencies, exact evidence gates and approval record: [PHASE_4_IMPLEMENTATION_PLAN_2026-10-03.md](PHASE_4_IMPLEMENTATION_PLAN_2026-10-03.md). Its 4A–4E sections are one implementation/approval unit. The operator approved the discussed amendment and continuation at 2026-10-03 15:00:44 America/Chicago. Backend/runtime/device evidence remains pending; no letter-only plan approvals or phone gates are added.
 
 ## 4A — Admin work-type templates + run requirement snapshots
 
@@ -858,19 +844,23 @@ Implement:
 - organization-scoped reusable work-type templates;
 - active/archive template behavior;
 - flat dropdown + Custom/Other;
-- numeric Total/B/D/A/Wide Angle requirements;
+- independently enabled Total plus a flat ordered list of named photo items/minima;
+- per-WO on/off/count/custom-item controls, optional item instructions and a clear minimum-photo summary;
 - validation rules from the global template section;
 - copy template values into the run snapshot at WO/run creation;
 - allow Admin edits before Start;
-- freeze snapshot once run becomes `IN_PROGRESS`;
+- freeze the exact downloaded snapshot/revision transactionally at local offline Start and at accepted server Start;
+- serialize Admin pre-Start edits against Start and fail closed on stale revision, preserving evidence;
 - no silent mid-job requirement mutation;
 - contractor details show requirement summary before Start.
 
-Do not add a named-shot checklist.
+Use the approved narrow photo list, with one-item-only credit. No general checklist/form builder.
 
 ## Camera workflow
 
-`Open assigned run → Camera → choose required stage when applicable → Take → Take → Take → Done`
+`Open downloaded run → read requirements → Start Work → photo list → tap item → Take → Take → Take → Done → next item → Finish Field Work`
+
+The selected item remains active across shots. Show its optional instruction and count. Extra photos covers inspector-selected additional views. Total-only/all-off jobs use simple capture without an empty forced list or stage selector.
 
 Requirements:
 
@@ -887,28 +877,13 @@ Requirements:
 - usable orientation;
 - no network required.
 
-## Stage and Wide Angle capture semantics
+## Item, stage and Wide Angle capture semantics
 
-If B/D/A is enabled for the run:
+Each photo is bound to exactly one enabled item UUID or Extra and counts once toward Total. Stage/framing describes the selected item, never a second required-item credit. A combined `Before — corner — wide` item is one obligation; a separate Before, During, After, Wide, room or corner item requires separate photos. The contractor deliberately changes the selected item; the app does not auto-advance business stage or infer content.
 
-- every captured photo must carry exactly one enabled stage label before shutter finalization;
-- current stage remains selected until contractor changes it;
-- contractor manually changes stage; Team does not guess/auto-advance business stage.
+Wide-designated items use the widest reliable supported rear-camera path. Where CameraX cannot reliably expose a dedicated ultra-wide lens, the documented fallback is widest supported normal rear framing. The label/count workflow does not claim image composition quality. No image-content judging in v1.
 
-If no B/D/A is enabled:
-
-- camera does not force a stage control.
-
-Wide Angle:
-
-- independent designation/mode;
-- photo may count toward both one stage and Wide Angle;
-- use the widest reliable supported rear-camera path where CameraX/device capability permits;
-- if no dedicated ultra-wide lens is reliably exposed, Team may still use the widest supported normal rear framing for the designated Wide Angle workflow;
-- Team enforces the designated capture/count workflow, not visual composition quality;
-- no image-content judging in v1.
-
-Live counters show current-run progress and remaining requirement.
+Live current-run item/Total counters show progress and remaining minima. Only enabled requirements block Finish, including independently enabled Total. Counts are minimums; additional captures stay available.
 
 ## Capture transaction
 
@@ -917,7 +892,7 @@ Before each shutter write:
 1. verify exact cached WO UUID + run UUID + local user;
 2. generate permanent photo UUID;
 3. reserve app-private protected-original path;
-4. persist Room photo record as `CAPTURING` bound to WO/run/capturing user and chosen stage/Wide designation;
+4. persist Room photo record as `CAPTURING` bound to WO/run/capturing user and selected item UUID or Extra and frozen requirement revision/context;
 5. only then allow CameraX write.
 
 After callback:
@@ -936,8 +911,8 @@ Permanent binding:
 - run UUID;
 - capturing user UUID;
 - captured timestamp;
-- stage designation where applicable;
-- Wide Angle designation.
+- selected requirement-item UUID or Extra;
+- frozen requirement revision and stage/framing context where applicable.
 
 Later address/work type/reassignment/reopen never redirects the photo to another run or WO.
 
@@ -972,7 +947,7 @@ Before Finish:
 
 - explicit contractor action + confirmation;
 - only eligible local photos may be discarded;
-- discard updates current-run Total/stage/Wide counters;
+- discard updates current-run unique Total/selected-item counters;
 - remote Drive content is never deleted by this action;
 - `UPLOADING`, `UNCERTAIN`, `UPLOADED`, and frozen post-Finish photos are not ordinary-discard eligible;
 - validate a batch fully before first deletion if batch discard is ever added.
@@ -994,21 +969,21 @@ Before Finish:
 
 ## Finish Field Work with photos
 
-Local Finish is allowed only when current-run protected valid captures satisfy the frozen requirement snapshot.
+Local Finish is allowed only when current-run protected valid captures satisfy every enabled item and enabled Total in the frozen snapshot. All-off has no count minimum; identity/authorization/protection still apply.
 
 When contractor taps Finish:
 
-1. persist local COMPLETE intent;
-2. freeze the current run's eligible photo set and counts;
+1. transactionally persist local COMPLETE intent and a stable frozen-set identity;
+2. freeze the exact eligible photo UUID set/counts against the requirement revision;
 3. ordinary contractor delete/detach becomes blocked for that frozen set;
 4. run becomes locally field-complete/pending server acceptance;
 5. HNP delivery becomes **eligible**, but no privileged upload occurs until authenticated server synchronization confirms authorization.
 
-When connectivity returns after Phase 5 exists, safe order is:
+Phase 4 extends the existing metadata/action coordinator to validate requirements before server Finish. When authenticated connectivity returns, safe order is:
 
 1. synchronize frozen photo metadata using existing phone UUIDs/run UUID;
 2. synchronize/accept server Finish with requirement validation;
-3. only after server authorization permits the completed run, start/resume HNP byte delivery.
+3. retain protected bytes as delivery pending; **Phase 5** adds HNP byte delivery only after server authorization permits the completed run.
 
 This prevents a stale/reassigned/cancelled offline run from uploading before server ownership is resolved.
 
@@ -1022,7 +997,9 @@ To keep pre-Finish discard simple:
 
 - local Room owns in-progress capture metadata;
 - on Finish/reconnect the frozen set is registered/upserted server-side with the same phone-generated UUIDs before/alongside completion acceptance;
-- server never allocates a replacement photo ID.
+- server never allocates a replacement photo ID;
+- Phase 4 validates frozen item/revision/set identities and distinct counts through narrow authorized idempotent registration/completion;
+- configured runs cannot bypass requirements through direct writes or old APIs; truly legacy runs/actions retain their historical semantics.
 
 ## Automated proof
 
@@ -1035,7 +1012,9 @@ At minimum:
 - immutable WO/run/user binding;
 - sequential shots cannot overwrite;
 - abnormal non-empty callback preserved;
-- stage/Wide counts correct;
+- single-item credit and unique Total/Extra counts correct;
+- per-WO all-off/Total-only behavior, summary math, instructions and order correct;
+- Admin edit/offline-Start revision race preserves old snapshot/photos as Needs review;
 - discard decrements eligible counters;
 - Finish blocks unmet requirements;
 - Finish freezes evidence;
@@ -1048,20 +1027,24 @@ At minimum:
 
 ## Physical gate
 
-Fully offline:
+Capture/Finish and restart are fully offline; reconnect checks follow afterward:
 
 1. open disposable cached run;
-2. verify requirement summary/counters;
+2. verify Admin-customized item/Total summary, order/instructions and simple all-off/Total-only behavior;
 3. CameraX multi-shot;
-4. exercise applicable stage/Wide/flash/torch/zoom/orientation;
+4. exercise item selection, dedicated separate item counts and applicable Wide/flash/torch/zoom/orientation;
 5. discard one safe pre-Finish bad photo;
 6. satisfy requirements;
 7. Finish offline;
 8. kill/restart;
 9. verify frozen originals/prepared copies/counters/run binding survive;
-10. verify no network was required.
+10. verify no network was required;
+11. reconnect and verify idempotent authorized frozen metadata/Finish with bytes still delivery pending;
+12. verify one controlled photo-bearing revision/assignment conflict and account isolation preserve evidence.
 
-Completion gate: **one disposable run can satisfy programmed photo rules, capture repeatedly offline, protect/prepare/freeze evidence, and survive restart on real Android.**
+The linked whole-phase plan owns the complete straight-line laptop/phone gate, automated prerequisites and recovery. Run it once on a frozen fully-tested candidate, using disposable subjects and existing accounts.
+
+Completion gate: **Admin custom/all-off rules, one-item counting, quick offline multi-shot capture, protection/preparation/discard/Finish, restart/account isolation and authorized idempotent metadata/Finish are proven, including one protected photo-bearing conflict. Required automated/deployed parity/recovery/physical evidence, explicit Level 3 runtime merge approval and integration agree.**
 
 ---
 
@@ -1313,7 +1296,7 @@ At minimum per current run:
 - start time;
 - field-complete time;
 - frozen requirement snapshot;
-- server-known captured counts (Total/B/D/A/Wide where applicable);
+- server-known unique Total and per-item captured counts against the frozen snapshot (stage/framing is context, not overlapping credit);
 - delivered count;
 - waiting/uploading;
 - failed;
@@ -1451,8 +1434,8 @@ Exercise repeatedly:
 - different work types at same address;
 - multiple WOs on one phone;
 - work-type templates + Custom/Other;
-- numeric photo requirements;
-- B/D/A and inspection/no-stage jobs;
+- independently enabled Total/named-item requirements, custom per-WO values and all-off/Total-only jobs;
+- separate B/D/A items and inspection/no-stage jobs;
 - Wide Angle workflow;
 - due date/instruction updates;
 - receipt;
@@ -1619,7 +1602,7 @@ Keep out unless real evidence changes the roadmap:
 - invoicing/accounting;
 - customer billing tiers;
 - OCR/AI photo classification/judging;
-- named required-shot checklist;
+- generalized conditional checklist/form builder beyond the approved flat photo-item list;
 - generic photo-requirement override/bypass;
 - business push-notification subsystem;
 - video;
