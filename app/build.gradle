@@ -13,8 +13,9 @@ android {
         applicationId 'com.inandout.fieldphotoprep.team.internal'
         minSdk 26
         targetSdk 36
-        versionCode 3
-        versionName '0.3-phase3a-room-internal'
+        versionCode (project.hasProperty("fwhRecovery") ? 5 : 4)
+        versionName (project.hasProperty('fwhRecovery') ? '0.3-phase3-recovery-internal' : '0.3-phase3-offline-internal')
+        buildConfigField 'boolean', 'FIELD_SYNC_ENABLED', project.hasProperty('fwhRecovery') ? 'false' : 'true'
 
         javaCompileOptions {
             annotationProcessorOptions {
@@ -46,10 +47,14 @@ android {
         }
     }
 
+    buildFeatures { buildConfig = true }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    sourceSets { test.resources.srcDirs += files(roomSchemaDir) }
 
     testOptions {
         unitTests.includeAndroidResources = true
@@ -57,9 +62,11 @@ android {
 }
 
 dependencies {
+    implementation 'androidx.work:work-runtime:2.12.0'
     implementation 'androidx.room:room-runtime:2.8.5'
     annotationProcessor 'androidx.room:room-compiler:2.8.5'
 
+    testImplementation 'androidx.work:work-testing:2.12.0'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'androidx.room:room-testing:2.8.5'
     testImplementation 'org.robolectric:robolectric:4.16.1'

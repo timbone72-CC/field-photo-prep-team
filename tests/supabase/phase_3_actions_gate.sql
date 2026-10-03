@@ -1,0 +1,114 @@
+-- Real PostgreSQL roles/RLS with controlled JWT claims, not signed network JWTs.
+-- Existing accepted test accounts are read only. Every disposable fixture rolls back.
+begin;
+do $gate$
+declare
+ admin_id uuid; a uuid; b uuid; org uuid; wo uuid; wo2 uuid; wo3 uuid; run uuid; run2 uuid; run3 uuid;
+ instance uuid; instance2 uuid; instance3 uuid; old_instance uuid;
+ start_id uuid:=gen_random_uuid(); finish_id uuid:=gen_random_uuid(); request_id uuid;
+ claims_a text; claims_b text; claims_admin text; prefix text:='FWH-PHASE3-GATE-'||gen_random_uuid();
+ event_start text:=to_char(now()-interval '2 minutes','YYYY-MM-DD"T"HH24:MI:SS.US"Z"');
+ event_finish text:=to_char(now()-interval '1 minute','YYYY-MM-DD"T"HH24:MI:SS.US"Z"');
+ result jsonb; replay jsonb; denied boolean; n integer; fname text;
+begin
+ select id,(raw_app_meta_data->>'organization_id')::uuid into admin_id,org from auth.users where raw_app_meta_data->>'role'='ADMIN' and deleted_at is null order by created_at limit 1;
+ select id into a from auth.users where private.is_assignable_contractor(id,org) order by created_at,id limit 1;
+ select id into b from auth.users where private.is_assignable_contractor(id,org) and id<>a order by created_at,id limit 1;
+ if a is null or b is null or admin_id is null then raise exception 'Existing test actors required';end if;
+ claims_a:=jsonb_build_object('sub',a,'role','authenticated','app_metadata',jsonb_build_object('role','CONTRACTOR','organization_id',org))::text;
+ claims_b:=jsonb_build_object('sub',b,'role','authenticated','app_metadata',jsonb_build_object('role','CONTRACTOR','organization_id',org))::text;
+ claims_admin:=jsonb_build_object('sub',admin_id,'role','authenticated','app_metadata',jsonb_build_object('role','ADMIN','organization_id',org))::text;
+ foreach fname in array array['start_work','complete_field_work','acknowledge_assignment_received','admin_update_work_order','respond_reassignment'] loop
+ if not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='private' and p.proname=fname and p.prosrc like '%for update;%')then raise exception 'Missing common lock: %',fname;end if;
+ end loop;
+ foreach fname in array array['INSERT','UPDATE','DELETE','TRUNCATE']loop
+ if has_table_privilege('authenticated','public.field_actions',fname) or has_table_privilege('anon','public.field_actions',fname)then raise exception 'Ledger broad write grant';end if;
+ end loop;
+ if has_table_privilege('anon','public.field_actions','SELECT') or has_function_privilege('anon','public.accept_field_action(uuid,uuid,uuid,uuid,text,text)','EXECUTE')then raise exception 'Anonymous access';end if;
+ perform set_config('request.jwt.claims',claims_admin,true);execute 'set local role authenticated';
+ select work_order_id into wo from public.admin_create_work_order(false,prefix,'FWH TEST','TEST','',current_date,a);
+ select work_order_id into wo2 from public.admin_create_work_order(false,prefix||'-2','FWH TEST','TEST','',current_date,a);
+ select work_order_id into wo3 from public.admin_create_work_order(false,prefix||'-3','FWH TEST','TEST','',current_date,a);
+ select current_run_id into run from public.work_orders where id=wo;
+ select current_run_id into run2 from public.work_orders where id=wo2;
+ select current_run_id into run3 from public.work_orders where id=wo3;
+ select id into instance from public.work_order_assignments where run_id=run and assignment_ended_at is null;
+ select id into instance2 from public.work_order_assignments where run_id=run2 and assignment_ended_at is null;
+ select id into instance3 from public.work_order_assignments where run_id=run3 and assignment_ended_at is null;
+ denied:=false;begin perform public.accept_field_action(start_id,wo,run,instance,'START',event_start);exception when insufficient_privilege then denied:=true;end;
+ if not denied then raise exception 'Wrong role accepted';end if;
+ perform set_config('request.jwt.claims',claims_b,true);
+ result:=public.accept_field_action(start_id,wo,run,instance,'START',event_start);
+ if result->>'reason'<>'ASSIGNMENT_UNAVAILABLE' then raise exception 'Wrong user accepted';end if;
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'role','authenticated','app_metadata',jsonb_build_object('role','CONTRACTOR','organization_id',gen_random_uuid()))::text,true);
+ denied:=false;begin perform public.accept_field_action(start_id,wo,run,instance,'START',event_start);exception when insufficient_privilege then denied:=true;end;
+ if not denied then raise exception 'Wrong organization accepted';end if;
+ perform set_config('request.jwt.claims',claims_a,true);
+ result:=public.accept_field_action(gen_random_uuid(),wo,run2,instance,'START',event_start);
+ if result->>'reason'<>'RUN_CHANGED' then raise exception 'Wrong run accepted';end if;
+ result:=public.accept_field_action(gen_random_uuid(),wo,run,instance2,'START',event_start);
+ if result->>'reason'<>'ASSIGNMENT_CHANGED' then raise exception 'Wrong assignment accepted';end if;
+ result:=public.accept_field_action(gen_random_uuid(),wo,run,instance,'START','malformed');
+ if result->>'reason'<>'INVALID_TIME' then raise exception 'Malformed time accepted';end if;
+ result:=public.accept_field_action(gen_random_uuid(),wo,run,instance,'START',(now()+interval '10 minutes')::text);
+ if result->>'reason' not in ('INVALID_TIME','CLOCK_REVIEW') then raise exception 'Future time accepted';end if;
+ result:=public.accept_field_action(gen_random_uuid(),wo,run,instance,'START',to_char(now()+interval '10 minutes','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
+ if result->>'reason'<>'CLOCK_REVIEW' then raise exception 'Future UTC time accepted';end if;
+ result:=public.accept_field_action(gen_random_uuid(),wo,run,instance,'START',to_char(now()-interval '10 minutes','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
+ if result->>'reason'<>'CLOCK_REVIEW' then raise exception 'Before assignment time accepted';end if;
+ if exists(select 1 from public.field_actions where work_order_id=wo)then raise exception 'Rejected attempts entered accepted ledger';end if;
+ result:=public.accept_field_action(start_id,wo,run,instance,'START',event_start);
+ if result->>'outcome'<>'APPLIED' or (result->>'started_at')::timestamptz<>event_start::timestamptz then raise exception 'Start event time lost';end if;
+ replay:=public.accept_field_action(start_id,wo,run,instance,'START',event_start);
+ if replay<>result then raise exception 'UUID retry changed result';end if;
+ replay:=public.accept_field_action(start_id,wo,run,instance,'START',event_finish);
+ if replay->>'reason'<>'ACTION_PAYLOAD_MISMATCH' then raise exception 'Payload mutation accepted';end if;
+ replay:=public.accept_field_action(gen_random_uuid(),wo,run,instance,'START',event_finish);
+ if replay->>'outcome'<>'ALREADY_APPLIED' or replay->>'started_at'<>result->>'started_at' then raise exception 'Second UUID rewrote start';end if;
+ replay:=public.accept_field_action(gen_random_uuid(),wo,run,instance,'COMPLETE',to_char(now()-interval '3 minutes','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
+ if replay->>'reason'<>'FINISH_BEFORE_START' then raise exception 'Backward finish accepted';end if;
+ result:=public.accept_field_action(finish_id,wo,run,instance,'COMPLETE',event_finish);
+ if result->>'outcome'<>'APPLIED' or (result->>'field_completed_at')::timestamptz<>event_finish::timestamptz then raise exception 'Finish event time lost';end if;
+ if public.accept_field_action(finish_id,wo,run,instance,'COMPLETE',event_finish)<>result then raise exception 'Finish retry not stable';end if;
+ replay:=public.accept_field_action(gen_random_uuid(),wo,run,instance,'COMPLETE',event_finish);
+ if replay->>'outcome'<>'ALREADY_APPLIED' then raise exception 'Already complete not canonical';end if;
+ replay:=public.accept_field_action(gen_random_uuid(),wo,run,instance,'START',event_start);
+ if replay->>'reason'<>'STATE_CHANGED' then raise exception 'New start on complete allowed';end if;
+ perform public.acknowledge_assignment_received(wo);
+ if not exists(select 1 from public.work_order_runs where id=run and field_status='FIELD_COMPLETE' and started_at=event_start::timestamptz and field_completed_at=event_finish::timestamptz and assignment_received_at is not null)then raise exception 'Run projection/receipt changed';end if;
+ if not exists(select 1 from public.work_order_assignments where id=instance and end_reason='FIELD_COMPLETE' and assignment_received_at is not null)then raise exception 'History receipt lost';end if;
+ if not exists(select 1 from public.field_assignments() j where j->>'id'=wo::text and j->>'assignment_instance_id'=instance::text)then raise exception 'Completed identity download mismatch';end if;
+ denied:=false;begin update public.field_actions set event_time_text='changed' where action_id=start_id;exception when insufficient_privilege then denied:=true;end;
+ if not denied then raise exception 'Direct ledger update allowed';end if;
+ perform set_config('request.jwt.claims',claims_b,true);
+ if exists(select 1 from public.field_actions where work_order_id=wo)then raise exception 'Wrong owner ledger read';end if;
+ replay:=public.accept_field_action(start_id,wo,run,instance,'START',event_start);
+ if replay->>'reason'<>'ACTION_PAYLOAD_MISMATCH' then raise exception 'Actor collision accepted';end if;
+ -- A→B→A before syncing local work reserves a different instance even at equal timestamps.
+ perform set_config('request.jwt.claims',claims_admin,true);
+ perform public.admin_update_work_order(wo3,prefix||'-3','FWH TEST','TEST','',current_date,b);
+ perform public.admin_update_work_order(wo3,prefix||'-3','FWH TEST','TEST','',current_date,a);
+ old_instance:=instance3;
+ select id into instance3 from public.work_order_assignments where run_id=run3 and assignment_ended_at is null;
+ if instance3=old_instance then raise exception 'Reassignment instance reused';end if;
+ perform set_config('request.jwt.claims',claims_a,true);
+ replay:=public.accept_field_action(gen_random_uuid(),wo3,run3,old_instance,'START',event_start);
+ if replay->>'reason'<>'ASSIGNMENT_CHANGED' then raise exception 'Old A intent auto rebound';end if;
+ -- Handoff after accepted start permits exact replay but rejects new old-instance action.
+ request_id:=gen_random_uuid();result:=public.accept_field_action(request_id,wo2,run2,instance2,'START',event_start);
+ perform set_config('request.jwt.claims',claims_admin,true);
+ perform public.admin_update_work_order(wo2,prefix||'-2','FWH TEST','TEST','',current_date,b);
+ perform set_config('request.jwt.claims',claims_a,true);perform public.respond_reassignment(wo2,true);
+ if public.accept_field_action(request_id,wo2,run2,instance2,'START',event_start)<>result then raise exception 'Recorded replay lost after handoff';end if;
+ replay:=public.accept_field_action(gen_random_uuid(),wo2,run2,instance2,'COMPLETE',event_finish);
+ if replay->>'reason'<>'ASSIGNMENT_UNAVAILABLE' then raise exception 'Stale handoff action accepted';end if;
+ -- Existing APIs remain compatible; cancellation is simulated only by fixture owner.
+ perform public.start_work(wo3);perform public.complete_field_work(wo3);
+ execute 'reset role';update public.work_orders set field_status='CANCELLED' where id=wo3;
+ perform set_config('request.jwt.claims',claims_a,true);execute 'set local role authenticated';
+ replay:=public.accept_field_action(gen_random_uuid(),wo3,run3,instance3,'COMPLETE',event_finish);
+ if replay->>'reason'<>'CANCELLED' then raise exception 'Cancelled action accepted';end if;
+ execute 'reset role';
+end;$gate$;
+select 'PASS: authority, identity, replay, timing, legacy APIs, projections and ledger grants/RLS' as result;
+rollback;
