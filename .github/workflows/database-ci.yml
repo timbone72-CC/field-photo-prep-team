@@ -19,6 +19,8 @@ jobs:
       FWH_TEST_DATABASE_URL: postgresql://postgres:fwh-disposable-ci@localhost:5432/fwh_test
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Prepare disposable controlled Auth context
         run: psql "$FWH_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/supabase/local_auth_context.sql
       - name: Apply every authoritative migration in order

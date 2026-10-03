@@ -10,7 +10,7 @@ import sys
 
 variant=sys.argv[1]
 recovery=variant=='recovery'
-head=os.environ['GITHUB_SHA']
+head=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
 apk=Path('app/build/outputs/apk/debug/app-debug.apk')
 build_tools=sorted((Path(os.environ['ANDROID_HOME'])/'build-tools').iterdir(),key=lambda p:tuple(int(x) for x in re.findall(r'\d+',p.name))) [-1]
 badging=subprocess.check_output([str(build_tools/'aapt'),'dump','badging',str(apk)],text=True)

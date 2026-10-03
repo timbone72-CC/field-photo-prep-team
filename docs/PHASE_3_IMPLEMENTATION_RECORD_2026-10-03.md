@@ -43,3 +43,6 @@ The Android CI freezes candidate versionCode 4 and forward-recovery versionCode 
 
 
 Development checkpoint **ef31e95a9323b94e2994c9d50d4f3457144bf881**: complete Android (run 37124491323), Admin (37124491344) and disposable database (37124491377) CI **PASS**. Database CI observed real lock waits in both orderings of START vs reassignment and START vs cancellation, with atomic authority/ledger outcomes. Candidate/recovery build identities passed. Final review then tightened UI callbacks and queued operations to their captured shared durable session generation; worker rejection/account switching cannot resurrect an older screen or clear another login. New focused callback regression plus final complete CI are required on the corrected runtime head before physical staging. The execution workspace restarted during this review; repository/source and CI proof survived on the authoritative PR. No work was restarted or new approval requested.
+
+
+Artifact staging explicitly checks out the PR head in Android/Admin/database CI, and identity.json records `git rev-parse HEAD` rather than the pull-request event's synthetic merge SHA. This keeps the tested runtime, proposed head and downloadable candidate/recovery identity aligned. Physical staging remains blocked until all checks on that final head pass.
