@@ -125,13 +125,13 @@ end; $$;
 create trigger work_order_runs_protect_requirements before update on public.work_order_runs
 for each row execute function private.protect_photo_requirements();
 
-alter table public.field_actions add column requirement_revision uuid, add column finish_set_id uuid;
+alter table public.field_actions add column requirement_revision uuid, add column finish_set_id uuid, add column finish_digest text not null default '';
 create table public.photo_finish_sets(
  id uuid primary key, actor_user_id uuid not null references auth.users(id) on delete restrict,
  organization_id uuid not null references public.organizations(id) on delete restrict,
  work_order_id uuid not null references public.work_orders(id) on delete restrict,
  run_id uuid not null, assignment_instance_id uuid not null, requirement_revision uuid,
- photos jsonb not null check(jsonb_typeof(photos)='array'), created_at timestamptz not null default now(),
+ photos jsonb not null check(jsonb_typeof(photos)='array'), digest text not null check(digest ~ '^[a-f0-9]{64}$'), created_at timestamptz not null default now(),
  unique(run_id,assignment_instance_id),
  foreign key(run_id,work_order_id) references public.work_order_runs(id,work_order_id) on delete restrict,
  foreign key(assignment_instance_id,run_id) references public.work_order_assignments(id,run_id) on delete restrict
@@ -186,9 +186,9 @@ begin
  return private.accept_field_action_legacy_v3(p_action_id,p_work_order_id,p_run_id,p_assignment_instance_id,p_action_kind,p_event_time);
 end; $$;
 
-create function private.accept_field_action_v4(p_action_id uuid,p_work_order_id uuid,p_run_id uuid,p_assignment_instance_id uuid,p_action_kind text,p_event_time text,p_requirement_revision uuid,p_finish_set_id uuid)
+create function private.accept_field_action_v4(p_action_id uuid,p_work_order_id uuid,p_run_id uuid,p_assignment_instance_id uuid,p_action_kind text,p_event_time text,p_requirement_revision uuid,p_finish_set_id uuid,p_finish_digest text)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare s jsonb; old public.field_actions%rowtype; result jsonb;
+declare s jsonb; old public.field_actions%rowtype; result jsonb; v_event timestamptz;
 begin
  if auth.jwt()->'app_metadata'->>'role' is distinct from 'CONTRACTOR'
  or not private.is_assignable_contractor(auth.uid(),nullif(auth.jwt()->'app_metadata'->>'organization_id','')::uuid)
@@ -196,7 +196,7 @@ begin
  perform pg_advisory_xact_lock(hashtextextended('fwh.action.'||p_action_id::text,0));
  select * into old from public.field_actions where action_id=p_action_id;
  if found then
- if old.requirement_revision is distinct from p_requirement_revision or old.finish_set_id is distinct from p_finish_set_id then
+ if old.requirement_revision is distinct from p_requirement_revision or old.finish_set_id is distinct from p_finish_set_id or old.finish_digest is distinct from p_finish_digest then
  return private.phase4_conflict(p_action_id,'ACTION_PAYLOAD_MISMATCH'); end if;
  return private.accept_field_action_legacy_v3(p_action_id,p_work_order_id,p_run_id,p_assignment_instance_id,p_action_kind,p_event_time);
  end if;
@@ -205,20 +205,27 @@ begin
  if s is null or nullif(s->>'revision','')::uuid is distinct from p_requirement_revision then
  return private.phase4_conflict(p_action_id,'REQUIREMENTS_CHANGED'); end if;
  if s<>'{}'::jsonb then perform private.validate_photo_requirements(s); end if;
- if p_action_kind='START' and p_finish_set_id is not null then return private.phase4_conflict(p_action_id,'INVALID_ACTION'); end if;
+ if p_finish_digest is null or (p_action_kind='START' and (p_finish_set_id is not null or p_finish_digest<>'')) then return private.phase4_conflict(p_action_id,'INVALID_ACTION'); end if;
  if p_action_kind='COMPLETE' and (s<>'{}'::jsonb or p_finish_set_id is not null) and not exists(
  select 1 from public.photo_finish_sets f where f.id=p_finish_set_id and f.actor_user_id=auth.uid()
  and f.work_order_id=p_work_order_id and f.run_id=p_run_id and f.assignment_instance_id=p_assignment_instance_id
- and f.requirement_revision is not distinct from p_requirement_revision) then
+ and f.requirement_revision is not distinct from p_requirement_revision and f.digest=p_finish_digest) then
  return private.phase4_conflict(p_action_id,'PHOTO_SET_REQUIRED'); end if;
+ if p_action_kind='COMPLETE' and p_finish_set_id is not null then
+ begin v_event:=p_event_time::timestamptz;
+ exception when invalid_datetime_format or datetime_field_overflow then return private.phase4_conflict(p_action_id,'INVALID_TIME'); end;
+ if v_event is null or exists(select 1 from public.photo_finish_sets f,jsonb_array_elements(f.photos) p
+ where f.id=p_finish_set_id and (p->>'captured_at')::timestamptz>v_event) then
+ return private.phase4_conflict(p_action_id,'FINISH_BEFORE_PHOTO'); end if;
+ end if;
  result:=private.accept_field_action_legacy_v3(p_action_id,p_work_order_id,p_run_id,p_assignment_instance_id,p_action_kind,p_event_time);
  if result->>'outcome'<>'CONFLICT' then
- update public.field_actions set requirement_revision=p_requirement_revision,finish_set_id=p_finish_set_id where action_id=p_action_id;
+ update public.field_actions set requirement_revision=p_requirement_revision,finish_set_id=p_finish_set_id,finish_digest=p_finish_digest where action_id=p_action_id;
  end if;
  return result;
 end; $$;
 
-create function private.register_photo_finish_set(p_set_id uuid,p_work_order_id uuid,p_run_id uuid,p_assignment_instance_id uuid,p_requirement_revision uuid,p_photos jsonb)
+create function private.register_photo_finish_set(p_set_id uuid,p_work_order_id uuid,p_run_id uuid,p_assignment_instance_id uuid,p_requirement_revision uuid,p_photos jsonb,p_digest text,p_payload text)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare u uuid:=auth.uid(); o uuid:=nullif(auth.jwt()->'app_metadata'->>'organization_id','')::uuid;
  w public.work_orders%rowtype; old public.photo_finish_sets%rowtype; s jsonb; p jsonb; i jsonb;
@@ -226,6 +233,8 @@ declare u uuid:=auth.uid(); o uuid:=nullif(auth.jwt()->'app_metadata'->>'organiz
 begin
  if auth.jwt()->'app_metadata'->>'role' is distinct from 'CONTRACTOR' or not private.is_assignable_contractor(u,o)
  then raise exception 'Contractor authorization required' using errcode='42501'; end if;
+ if p_digest is null or p_payload is null or length(p_payload)>2000000 or p_digest is distinct from encode(sha256(convert_to(p_payload,'UTF8')),'hex')
+ or p_payload::jsonb is distinct from p_photos then return private.phase4_conflict(p_set_id,'PHOTO_SET_DIGEST_MISMATCH'); end if;
  if p_set_id is null or p_photos is null or jsonb_typeof(p_photos)<>'array' or jsonb_array_length(p_photos)>5000
  then return private.phase4_conflict(p_set_id,'INVALID_PHOTO_SET'); end if;
  perform pg_advisory_xact_lock(hashtextextended('fwh.photo-set.'||p_set_id::text,0));
@@ -234,7 +243,7 @@ begin
  if old.actor_user_id is distinct from u or old.organization_id is distinct from o
  or old.work_order_id is distinct from p_work_order_id or old.run_id is distinct from p_run_id
  or old.assignment_instance_id is distinct from p_assignment_instance_id
- or old.requirement_revision is distinct from p_requirement_revision or old.photos is distinct from p_photos then
+ or old.requirement_revision is distinct from p_requirement_revision or old.photos is distinct from p_photos or old.digest is distinct from p_digest then
  return private.phase4_conflict(p_set_id,'PHOTO_SET_PAYLOAD_MISMATCH'); end if;
  return jsonb_build_object('outcome','ALREADY_APPLIED','set_id',p_set_id);
  end if;
@@ -277,8 +286,8 @@ begin
  if n<(i->>'minimum')::integer then return private.phase4_conflict(p_set_id,'PHOTO_REQUIREMENTS_UNMET'); end if;
  end if;
  end loop;
- insert into public.photo_finish_sets(id,actor_user_id,organization_id,work_order_id,run_id,assignment_instance_id,requirement_revision,photos)
- values(p_set_id,u,o,p_work_order_id,p_run_id,p_assignment_instance_id,p_requirement_revision,p_photos);
+ insert into public.photo_finish_sets(id,actor_user_id,organization_id,work_order_id,run_id,assignment_instance_id,requirement_revision,photos,digest)
+ values(p_set_id,u,o,p_work_order_id,p_run_id,p_assignment_instance_id,p_requirement_revision,p_photos,p_digest);
  insert into public.photos(id,work_order_id,run_id,captured_by,captured_at,requirement_item_id,requirement_revision,finish_set_id,assignment_instance_id)
  select (r->>'id')::uuid,p_work_order_id,p_run_id,u,(r->>'captured_at')::timestamptz,
  nullif(r->>'item_id','')::uuid,p_requirement_revision,p_set_id,p_assignment_instance_id from jsonb_array_elements(p_photos) r;
@@ -605,6 +614,9 @@ begin
     raise exception 'Reassignment consent is only available while work is in progress' using errcode = '22023';
   end if;
 
+  if p_accept and exists(select 1 from public.photos p where p.run_id=v_row.current_run_id and p.sync_status<>'UPLOADED') then
+    raise exception 'Saved photos are awaiting delivery. Contact Admin before handing off.' using errcode='22023'; end if;
+
   if v_row.pending_assignee_user_id is null then
     raise exception 'No reassignment request is pending' using errcode = '22023';
   end if;
@@ -751,17 +763,17 @@ grant execute on function private.admin_update_work_order_v4(uuid,text,text,text
 revoke all on function public.admin_update_work_order_v4(uuid,text,text,text,text,date,uuid,uuid,jsonb) from public,anon,authenticated;
 grant execute on function public.admin_update_work_order_v4(uuid,text,text,text,text,date,uuid,uuid,jsonb) to authenticated,service_role;
 
-create function public.accept_field_action_v4(p_action_id uuid,p_work_order_id uuid,p_run_id uuid,p_assignment_instance_id uuid,p_action_kind text,p_event_time text,p_requirement_revision uuid,p_finish_set_id uuid) returns jsonb language sql security invoker set search_path='' as $$select * from private.accept_field_action_v4(p_action_id,p_work_order_id,p_run_id,p_assignment_instance_id,p_action_kind,p_event_time,p_requirement_revision,p_finish_set_id);$$;
-revoke all on function private.accept_field_action_v4(uuid,uuid,uuid,uuid,text,text,uuid,uuid) from public,anon,authenticated;
-grant execute on function private.accept_field_action_v4(uuid,uuid,uuid,uuid,text,text,uuid,uuid) to authenticated,service_role;
-revoke all on function public.accept_field_action_v4(uuid,uuid,uuid,uuid,text,text,uuid,uuid) from public,anon,authenticated;
-grant execute on function public.accept_field_action_v4(uuid,uuid,uuid,uuid,text,text,uuid,uuid) to authenticated,service_role;
+create function public.accept_field_action_v4(p_action_id uuid,p_work_order_id uuid,p_run_id uuid,p_assignment_instance_id uuid,p_action_kind text,p_event_time text,p_requirement_revision uuid,p_finish_set_id uuid,p_finish_digest text) returns jsonb language sql security invoker set search_path='' as $$select * from private.accept_field_action_v4(p_action_id,p_work_order_id,p_run_id,p_assignment_instance_id,p_action_kind,p_event_time,p_requirement_revision,p_finish_set_id,p_finish_digest);$$;
+revoke all on function private.accept_field_action_v4(uuid,uuid,uuid,uuid,text,text,uuid,uuid,text) from public,anon,authenticated;
+grant execute on function private.accept_field_action_v4(uuid,uuid,uuid,uuid,text,text,uuid,uuid,text) to authenticated,service_role;
+revoke all on function public.accept_field_action_v4(uuid,uuid,uuid,uuid,text,text,uuid,uuid,text) from public,anon,authenticated;
+grant execute on function public.accept_field_action_v4(uuid,uuid,uuid,uuid,text,text,uuid,uuid,text) to authenticated,service_role;
 
-create function public.register_photo_finish_set(p_set_id uuid,p_work_order_id uuid,p_run_id uuid,p_assignment_instance_id uuid,p_requirement_revision uuid,p_photos jsonb) returns jsonb language sql security invoker set search_path='' as $$select * from private.register_photo_finish_set(p_set_id,p_work_order_id,p_run_id,p_assignment_instance_id,p_requirement_revision,p_photos);$$;
-revoke all on function private.register_photo_finish_set(uuid,uuid,uuid,uuid,uuid,jsonb) from public,anon,authenticated;
-grant execute on function private.register_photo_finish_set(uuid,uuid,uuid,uuid,uuid,jsonb) to authenticated,service_role;
-revoke all on function public.register_photo_finish_set(uuid,uuid,uuid,uuid,uuid,jsonb) from public,anon,authenticated;
-grant execute on function public.register_photo_finish_set(uuid,uuid,uuid,uuid,uuid,jsonb) to authenticated,service_role;
+create function public.register_photo_finish_set(p_set_id uuid,p_work_order_id uuid,p_run_id uuid,p_assignment_instance_id uuid,p_requirement_revision uuid,p_photos jsonb,p_digest text,p_payload text) returns jsonb language sql security invoker set search_path='' as $$select * from private.register_photo_finish_set(p_set_id,p_work_order_id,p_run_id,p_assignment_instance_id,p_requirement_revision,p_photos,p_digest,p_payload);$$;
+revoke all on function private.register_photo_finish_set(uuid,uuid,uuid,uuid,uuid,jsonb,text,text) from public,anon,authenticated;
+grant execute on function private.register_photo_finish_set(uuid,uuid,uuid,uuid,uuid,jsonb,text,text) to authenticated,service_role;
+revoke all on function public.register_photo_finish_set(uuid,uuid,uuid,uuid,uuid,jsonb,text,text) from public,anon,authenticated;
+grant execute on function public.register_photo_finish_set(uuid,uuid,uuid,uuid,uuid,jsonb,text,text) to authenticated,service_role;
 revoke all on function private.validate_photo_requirements(jsonb) from public,anon,authenticated;
 revoke all on function private.protect_photo_requirements() from public,anon,authenticated;
 revoke all on function private.phase4_conflict(uuid,text) from public,anon,authenticated;

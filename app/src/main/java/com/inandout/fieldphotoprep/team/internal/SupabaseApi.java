@@ -243,6 +243,7 @@ final class SupabaseApi
             metadata.put("p_run_id", action.runId); metadata.put("p_assignment_instance_id", action.assignmentInstanceId);
             metadata.put("p_requirement_revision", action.requirementRevision.isEmpty()?JSONObject.NULL:action.requirementRevision);
             metadata.put("p_photos", new JSONArray(action.finishPhotosJson));
+            metadata.put("p_digest",action.finishDigest); metadata.put("p_payload",action.finishPhotosJson);
             JSONObject result = new JSONObject(postRpc(accessToken,"register_photo_finish_set",metadata));
             if ("CONFLICT".equals(result.optString("outcome"))) {
                 result.put("action_id",action.actionId); return new FieldActionResult(action,result.toString());
@@ -253,6 +254,7 @@ final class SupabaseApi
         if (!action.requirementRevision.isEmpty() || !action.finishSetId.isEmpty()) {
             request.put("p_requirement_revision",action.requirementRevision.isEmpty()?JSONObject.NULL:action.requirementRevision);
             request.put("p_finish_set_id",action.finishSetId.isEmpty()?JSONObject.NULL:action.finishSetId);
+            request.put("p_finish_digest",action.finishDigest);
             return new FieldActionResult(action, postRpc(accessToken,"accept_field_action_v4",request));
         }
         return new FieldActionResult(action, postRpc(accessToken, "accept_field_action", request));

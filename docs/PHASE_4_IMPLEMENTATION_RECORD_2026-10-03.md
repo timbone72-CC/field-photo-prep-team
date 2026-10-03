@@ -1,7 +1,7 @@
 # Phase 4 photos — implementation record
 
 Scope key: `phase-4-photos`. Change level: **Level 3**.
-Authoritative branch: `feat/phase-4-photos`; draft PR pending creation.
+Authoritative branch: `feat/phase-4-photos`; draft PR **#35**.
 Baseline: main `a7d5806df00df71bfb074af1dc0ce14a67a08c20`.
 
 ## Approved scope and authority
@@ -31,3 +31,9 @@ Server recovery retains additive requirements, metadata and accepted action ledg
 Implementation IN PROGRESS. Runtime, migration, focused regression and final exact-head CI proof PENDING. No Phase 4 live DDL applied. Candidate/recovery artifacts PENDING. Combined laptop/phone gate PENDING. Explicit Level 3 merge approval PENDING; runtime merge NOT AUTHORIZED.
 
 Complete local/disposable SQL and Android/Admin checks before applying tested mirrored live DDL. Recheck grants/RLS, deployed bodies, baseline preservation and security/performance advisors. Then produce immutable candidate and recovery artifacts for one combined physical gate from the approved plan. Record actual pass/block/fail results and exact next gate here.
+
+## Implementation checkpoint
+
+Draft runtime checkpoint `deb1bb1ff6ce0f3308c9549e291fdab4adf28a6e` implements the single requirement model, optional template/default settings, pre-Start atomic Admin edits, configured protocol guards, frozen metadata validation, Room v3, permanent capture reservations, CameraX any-order UI, separate JPEG preparation, confirmed single-photo discard intents and exact Finish sets in the existing action coordinator.
+
+Local disposable PostgreSQL (PGlite, UTC) migration chain and Phase 3A/3/4 SQL gates PASS. This is preliminary SQL proof; PostgreSQL 17.6 CI and real multi-connection races remain required. Admin syntax and 19 regression tests PASS. No hosted DDL applied yet. Android compile, focused/complete regression, v3 schema export and actual candidate/recovery identities remain pending CI. Initial workstation package installation was unavailable; use disposable/CI proof without changing system permissions.

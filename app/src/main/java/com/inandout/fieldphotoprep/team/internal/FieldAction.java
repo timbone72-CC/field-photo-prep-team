@@ -47,6 +47,7 @@ final class FieldAction {
     @NonNull @androidx.room.ColumnInfo(defaultValue="''") public String requirementRevision = "";
     @NonNull @androidx.room.ColumnInfo(defaultValue="''") public String finishSetId = "";
     @NonNull @androidx.room.ColumnInfo(defaultValue="''") public String finishPhotosJson = "";
+    @NonNull @androidx.room.ColumnInfo(defaultValue="''") public String finishDigest = "";
 
     FieldAction(
             @NonNull String actionId,

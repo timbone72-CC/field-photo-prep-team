@@ -296,6 +296,7 @@ abstract class CachedWorkOrderDao {
             p.finishSetId=a.finishSetId; updatePhoto(p);
         } } catch(org.json.JSONException e) { throw new IllegalStateException(e); }
         a.finishPhotosJson=set.toString();
+        a.finishDigest=PhotoOwner.digest(a.finishPhotosJson);
     }
 
     @Transaction

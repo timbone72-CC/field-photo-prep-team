@@ -60,8 +60,15 @@ final class PhotoOwner {
         boolean removed=(!original.exists()||original.delete())&&(!prepared.exists()||prepared.delete())&&(!temp.exists()||temp.delete());
         if(removed) { p.state="DISCARDED";p.problem="";p.prepared=false;dao.updatePhoto(p); }
     }
+    static String digest(String value) {
+        try {
+            byte[] hash=java.security.MessageDigest.getInstance("SHA-256").digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder b=new StringBuilder();for(byte v:hash)b.append(String.format(java.util.Locale.ROOT,"%02x",v&255));return b.toString();
+        } catch(java.security.NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
+    }
     void ensureFrozenReadable(FieldAction a) throws IOException {
         if(a.finishSetId.isEmpty()) return;
+        if(!digest(a.finishPhotosJson).equals(a.finishDigest)) throw new IOException("Frozen metadata fingerprint needs review.");
         try {
             org.json.JSONArray frozen=new org.json.JSONArray(a.finishPhotosJson);
             for(int n=0;n<frozen.length();n++) {

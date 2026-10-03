@@ -49,6 +49,7 @@ abstract class TeamDatabase extends RoomDatabase {
                     db.execSQL("ALTER TABLE field_actions ADD COLUMN requirementRevision TEXT NOT NULL DEFAULT ''");
                     db.execSQL("ALTER TABLE field_actions ADD COLUMN finishSetId TEXT NOT NULL DEFAULT ''");
                     db.execSQL("ALTER TABLE field_actions ADD COLUMN finishPhotosJson TEXT NOT NULL DEFAULT ''");
+                    db.execSQL("ALTER TABLE field_actions ADD COLUMN finishDigest TEXT NOT NULL DEFAULT ''");
                     db.execSQL("CREATE TABLE IF NOT EXISTS protected_photos (id TEXT NOT NULL PRIMARY KEY,ownerId TEXT NOT NULL,organizationId TEXT NOT NULL,workOrderId TEXT NOT NULL,runId TEXT NOT NULL,assignmentInstanceId TEXT NOT NULL,requirementRevision TEXT NOT NULL,itemId TEXT NOT NULL,capturedAt TEXT NOT NULL,originalPath TEXT NOT NULL,preparedPath TEXT NOT NULL,state TEXT NOT NULL,problem TEXT NOT NULL,finishSetId TEXT NOT NULL,originalBytes INTEGER NOT NULL,prepared INTEGER NOT NULL)");
                     db.execSQL("CREATE INDEX IF NOT EXISTS index_protected_photos_ownerId_organizationId_workOrderId_runId ON protected_photos(ownerId,organizationId,workOrderId,runId)");
                 }

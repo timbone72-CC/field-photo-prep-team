@@ -40,3 +40,4 @@ jobs:
         run: |
           python3 -m pip install 'psycopg[binary]==3.2.10'
           python3 tests/supabase/phase_3_lock_races.py
+          python3 tests/supabase/phase_4_lock_races.py

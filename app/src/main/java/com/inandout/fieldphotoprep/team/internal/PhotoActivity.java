@@ -79,7 +79,7 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
         boolean editable=started&&BuildConfig.FIELD_SYNC_ENABLED&&!frozen&&row.conflictReason.isEmpty()
                 &&!"FIELD_COMPLETE".equals(row.fieldStatus)&&!"CANCELLED".equals(row.fieldStatus);
         for(PhotoRequirements.Item i:req.items)if(i.enabled){int count=0;for(ProtectedPhoto p:photos)if(p.readable()&&p.itemId.equals(i.id))count++;
-            Button b=button(i.label+"  "+count+"/"+i.minimum,list,()->{item=i.id;openCamera();});b.setEnabled(editable);}
+            Button b=button((count>=i.minimum?"✓ ":"")+i.label+"  "+count+"/"+i.minimum,list,()->{item=i.id;openCamera();});b.setEnabled(editable);}
         Button extra=button("Extra photos",list,()->{item="";openCamera();});extra.setEnabled(editable);
         for(ProtectedPhoto p:photos)if(!"DISCARDED".equals(p.state)){
             LinearLayout rowView=new LinearLayout(this);rowView.setOrientation(LinearLayout.HORIZONTAL);list.addView(rowView);

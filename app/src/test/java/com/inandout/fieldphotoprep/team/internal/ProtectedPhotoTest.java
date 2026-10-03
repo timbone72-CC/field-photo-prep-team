@@ -14,17 +14,17 @@ import java.util.*;
 public class ProtectedPhotoTest {
     TeamDatabase db; CachedWorkOrderDao dao; RoomAssignmentStore store;
     final SupabaseApi.AuthSession actor=OfflineActionTest.session("a","org");
-    Context context; File directory; PhotoOwner owner; SessionCoordinator sessions;
+    Context context; String databaseName; File directory; PhotoOwner owner; SessionCoordinator sessions;
     @Before public void setup() throws Exception {
         context=RuntimeEnvironment.getApplication();directory=new File(context.getCacheDir(),"photo-test-"+UUID.randomUUID());assertTrue(directory.mkdirs());
-        db=Room.inMemoryDatabaseBuilder(context,TeamDatabase.class).allowMainThreadQueries().build();dao=db.cachedWorkOrderDao();store=new RoomAssignmentStore(dao);
+        databaseName="protected-test-"+UUID.randomUUID()+".db";db=Room.databaseBuilder(context,TeamDatabase.class,databaseName).allowMainThreadQueries().build();dao=db.cachedWorkOrderDao();store=new RoomAssignmentStore(dao);
         SupabaseApi.WorkOrder work=OfflineActionTest.wo("1","instance");work.requirementSnapshotJson=PhotoRequirementsTest.configuration(3,1,1).toString();store.replace(actor,List.of(work),1);
         dao.createAction(actor,"1","run-1","START","2026-10-03T12:00:00Z");
         context.getSharedPreferences(SecureSessionStore.PREFERENCES_NAME,Context.MODE_PRIVATE).edit().clear().commit();
         SecureSessionStore secure=new SecureSessionStore(context,new SecureSessionStore.Crypto(){public byte[] encrypt(byte[] v){return v;}public byte[] decrypt(byte[] v){return v;}});
         sessions=new SessionCoordinator(secure,t->actor);sessions.install(sessions.beginLogin(),actor);owner=new PhotoOwner(context,dao,sessions);
     }
-    @After public void close(){owner.io.shutdownNow();db.close();for(File f:Objects.requireNonNull(directory.listFiles()))f.delete();directory.delete();}
+    @After public void close(){owner.io.shutdownNow();db.close();context.deleteDatabase(databaseName);for(File f:Objects.requireNonNull(directory.listFiles()))f.delete();directory.delete();}
     ProtectedPhoto reservation(String item) {
         String id=UUID.randomUUID().toString();return dao.reservePhoto(actor,"1","run-1",item,"2026-10-03T12:00:10Z",id,new File(directory,id+".jpg").getAbsolutePath(),new File(directory,id+"-prep.jpg").getAbsolutePath());
     }
@@ -63,4 +63,32 @@ public class ProtectedPhotoTest {
         assertArrayEquals(before,java.nio.file.Files.readAllBytes(new File(p.originalPath).toPath()));
         assertTrue(dao.photo(p.id).readable());assertNotEquals(p.originalPath,p.preparedPath);
     }
+    @Test public void frozenSetAndProtectedOriginalSurviveActualRoomCloseAndReopen() throws Exception {
+        photo(PhotoRequirementsTest.id(2));photo(PhotoRequirementsTest.id(3));ProtectedPhoto extra=photo("");
+        FieldAction finish=dao.createAction(actor,"1","run-1","COMPLETE","2026-10-03T12:01:00Z");db.close();
+        db=Room.databaseBuilder(context,TeamDatabase.class,databaseName).allowMainThreadQueries().build();dao=db.cachedWorkOrderDao();
+        assertEquals(finish.finishDigest,dao.action(finish.actionId).finishDigest);
+        assertEquals(finish.finishPhotosJson,dao.action(finish.actionId).finishPhotosJson);
+        assertEquals(finish.finishSetId,dao.photo(extra.id).finishSetId);assertTrue(dao.photo(extra.id).readable());
+        PhotoOwner restarted=new PhotoOwner(context,dao,sessions);restarted.ensureFrozenReadable(dao.action(finish.actionId));restarted.io.shutdownNow();
+    }
+    @Test public void derivativeKeepsSmallPhotoDimensionsAndAppliesOrientation() throws Exception {
+        ProtectedPhoto p=reservation("");jpeg(p);
+        android.media.ExifInterface exif=new android.media.ExifInterface(p.originalPath);
+        exif.setAttribute(android.media.ExifInterface.TAG_ORIENTATION,"6");exif.saveAttributes();
+        byte[] original=java.nio.file.Files.readAllBytes(new File(p.originalPath).toPath());owner.captured(p.id);assertTrue(dao.photo(p.id).prepared);
+        android.graphics.BitmapFactory.Options bounds=new android.graphics.BitmapFactory.Options();bounds.inJustDecodeBounds=true;
+        android.graphics.BitmapFactory.decodeFile(p.preparedPath,bounds);assertEquals(32,bounds.outWidth);assertEquals(64,bounds.outHeight);
+        assertArrayEquals(original,java.nio.file.Files.readAllBytes(new File(p.originalPath).toPath()));
+    }
+    @Test public void derivativeLimitsLongEdgeAndFailedPreparationStillProtectsAndCountsOriginal() throws Exception {
+        ProtectedPhoto p=reservation("");Bitmap bitmap=Bitmap.createBitmap(4096,2048,Bitmap.Config.ARGB_8888);
+        try(FileOutputStream out=new FileOutputStream(p.originalPath)){assertTrue(bitmap.compress(Bitmap.CompressFormat.JPEG,95,out));}bitmap.recycle();
+        owner.captured(p.id);assertTrue(dao.photo(p.id).prepared);
+        android.graphics.BitmapFactory.Options bounds=new android.graphics.BitmapFactory.Options();bounds.inJustDecodeBounds=true;
+        android.graphics.BitmapFactory.decodeFile(p.preparedPath,bounds);assertEquals(2048,bounds.outWidth);assertEquals(1024,bounds.outHeight);
+        ProtectedPhoto blocked=reservation("");jpeg(blocked);assertTrue(new File(blocked.preparedPath+".tmp").mkdir());owner.captured(blocked.id);
+        assertTrue(dao.photo(blocked.id).readable());assertFalse(dao.photo(blocked.id).prepared);assertTrue(new File(blocked.originalPath).exists());
+    }
+
 }
