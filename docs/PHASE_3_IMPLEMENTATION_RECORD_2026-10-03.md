@@ -46,3 +46,9 @@ Development checkpoint **ef31e95a9323b94e2994c9d50d4f3457144bf881**: complete An
 
 
 Artifact staging explicitly checks out the PR head in Android/Admin/database CI, and identity.json records `git rev-parse HEAD` rather than the pull-request event's synthetic merge SHA. This keeps the tested runtime, proposed head and downloadable candidate/recovery identity aligned. Physical staging remains blocked until all checks on that final head pass.
+
+## Upgrade regression correction before phone installation — 2026-10-03
+
+The operator stopped the stalled conversation and confirmed Done here at 08:17 America/Chicago. This session retains PR #32 and all previous passed evidence. Final review found that legacy Room v1 rows already IN_PROGRESS or FIELD_COMPLETE have server start times but no assignment-instance field. Their first v2 refresh falsely classified the confirmed current identity as an assignment change. Reconciliation now initializes the confirmed same-run identity for legacy rows only when no immutable local action exists. Known assignment-instance changes and queued evidence remain protected conflicts. Real v1 migration regressions cover assigned, started and completed work, separate owner preservation and pending Finish reconstruction.
+
+Runtime 9106ff3 and its saved candidate/recovery are superseded before operator installation by this narrow fix. Physical staging is PAUSED until focused migration/queue proof, final corrected-head Android/Admin/database/governance CI and replacement APK identities pass. The phase scope, Room v2 schema, server migrations, package/signer and recovery rules are unchanged. Physical gate and explicit Level 3 merge approval remain PENDING.
