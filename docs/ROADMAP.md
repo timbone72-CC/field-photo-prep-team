@@ -695,7 +695,7 @@ Future template/run/lifecycle additions do not retroactively make this existing 
 
 ---
 
-# Phase 3 — Run identity, Room work list, and offline field actions — PHASE 3A VERIFIED / MERGE APPROVED
+# Phase 3 — Run identity, Room work list, and offline field actions — PHASE 3A MERGED / PHASE 3B PLAN PROPOSED
 
 ## Goal
 
@@ -703,7 +703,7 @@ Make assigned work reliable with no internet, including restart, while introduci
 
 ## 3A — Server run foundation + Room cache
 
-Resume status (2026-10-02 America/Chicago): PR #17 is reconciled with current FWH main. Applied database migrations, controlled RLS/RPC and preservation/advisor checks, complete CI and the single phone gate passed on runtime `3191dd0ec29ec8e0f29e7d748ed8b8e54bdd6131`. The operator confirmed online restart, offline downloaded work after force-stop/restart, Sign Out lock, second-account isolation and return/refresh convergence. Final PR review passed and the operator explicitly approved merging PR #17 at 22:33 America/Chicago. The recorded internal APK remains the phone-tested runtime; PR #17 records the authoritative integration result. Phase 3A completion gates are passed; subsequent runtime work starts only after integration and its own plan gate. See `docs/PHASE_3A_IMPLEMENTATION_RECORD_2026-09-15.md` for evidence and artifact identity. Full Phase 3 is not complete: Phase 3B/3C and phone automatic refresh remain outside this scope.
+Resume status (2026-10-02 America/Chicago): PR #17 is reconciled with current FWH main. Applied database migrations, controlled RLS/RPC and preservation/advisor checks, complete CI and the single phone gate passed on runtime `3191dd0ec29ec8e0f29e7d748ed8b8e54bdd6131`. The operator confirmed online restart, offline downloaded work after force-stop/restart, Sign Out lock, second-account isolation and return/refresh convergence. Final PR review passed and the operator explicitly approved merging PR #17 at 22:33 America/Chicago. PR #17 is merged as `e348257220a00bc207c1099c8308b6701aeaedf8`; the recorded internal APK remains the phone-tested runtime. Phase 3A completion gates and integration are complete; subsequent runtime work starts only after its own plan gate. See `docs/PHASE_3A_IMPLEMENTATION_RECORD_2026-09-15.md` for evidence and artifact identity. Full Phase 3 is not complete: Phase 3B/3C and phone automatic refresh remain outside this scope.
 
 Before the Android offline model depends on it:
 
@@ -736,6 +736,8 @@ Minimum cached data:
 - cache-owner user UUID.
 
 ## 3B — Offline Start/Finish queue
+
+Detailed implementation plan (2026-10-02 America/Chicago): [PHASE_3B_IMPLEMENTATION_PLAN_2026-10-02.md](PHASE_3B_IMPLEMENTATION_PLAN_2026-10-02.md) is **PROPOSED / AWAITING OPERATOR PLAN APPROVAL**. It defines assignment-instance binding, a non-destructive Room migration, durable actions and tap times, run-bound idempotent acceptance, foreground ordered sync, refresh preservation, visible conflicts, rollback and exact automated/phone gates. Its timestamp tolerances, pending-action handoff guard and explicit protection against A → B → A replay are proposed clarifications requiring plan approval. No Phase 3B runtime work is authorized by recording this proposal.
 
 Each local field action has its own UUID and stores:
 
@@ -793,7 +795,7 @@ If there is no local Start/pending/photo evidence, remove from active list after
 
 Conservative v1 resolution:
 
-- Admin may restore/reassign work back when the local evidence should be accepted;
+- Admin may restore/reassign work back when the local evidence should be accepted; the proposed Phase 3B plan clarifies that a new assignment instance alone does not authorize replay or rebinding of older actions, which remain protected pending an explicit governed resolution;
 - otherwise protected conflict remains until a later explicitly governed discard/recovery path exists.
 
 ## Session/restart
