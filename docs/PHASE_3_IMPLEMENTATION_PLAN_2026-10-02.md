@@ -1,8 +1,10 @@
 # Field Work Hub — Phase 3 Implementation Plan — 2026-10-02
 
-Status: **APPROVED SCOPE CONSOLIDATED — 3A MERGED; 3B/3C IMPLEMENTATION PENDING**
+Status: **APPROVED PLAN — 3A MERGED; 3B/3C IMPLEMENTED AND GATES PASSED; MERGE PENDING**
 
 Plan ID: `phase-3-implementation-plan`.
+
+Current execution checkpoint (2026-10-03): PR #32 implemented the unchanged remaining 3B/3C scope. Backend, exact-runtime automation and the combined physical gate passed on installed runtime `87e57d4fc476800be96f6730e6631c23f1729536`, including actual background acceptance before app reopening and protected conflict/account isolation. See [PHASE_3_IMPLEMENTATION_RECORD_2026-10-03.md](PHASE_3_IMPLEMENTATION_RECORD_2026-10-03.md). Final documentation checks, explicit Level 3 merge approval and integration remain pending. The planning-baseline descriptions below are historical; they do not override the current implementation record or require repeating accepted evidence.
 
 ## Classification and authoritative line
 
@@ -193,6 +195,6 @@ Use exact visible labels, guide the operator one step at a time, and record each
 
 Documentation rollback is the narrow doc commit reversal to the baseline. Runtime rollback must preserve the new Room schema/action rows and server ledger. An old Room v1 APK cannot simply open a v2 database: do not downgrade, uninstall or clear data. Stage a forward-compatible recovery build from the known-good baseline behavior with v2 reading/preservation and action submission/scheduling disabled if required; retain pending/conflict evidence. Keep additive server tables and acceptance records; disable a faulty narrow RPC by a mirrored forward migration if needed, rather than dropping data. Cancel only scheduled drains when pausing sync; retain all Room actions and server acceptance rows. Establish and verify those concrete recovery steps before enabling the runtime candidate.
 
-The whole Phase 3 is complete only when retained 3A evidence, focused 3B/3C tests, exact-head complete automation, actual migration/grant/advisor parity, the combined physical gate including observed background action sync, data-preserving rollback readiness, explicit Level 3 merge approval and actual integration agree. A queue-only pass cannot mark the worker or the parent phase complete. Record PASS/BLOCKED/FAIL and the exact next evidence gate. All current 3B/3C runtime/backend/phone gates are still pending; documentation CI is not their runtime proof.
+The whole Phase 3 is complete only when retained 3A evidence, focused 3B/3C tests, exact-head complete automation, actual migration/grant/advisor parity, the combined physical gate including observed background action sync, data-preserving rollback readiness, explicit Level 3 merge approval and actual integration agree. A queue-only pass cannot mark the worker or the parent phase complete. Record PASS/BLOCKED/FAIL and the exact next evidence gate. The current 3B/3C backend/automated/physical gate results are PASS in the linked implementation record; documentation CI is not substituted for that runtime/physical evidence. Explicit Level 3 merge approval and integration remain pending.
 
-Current handoff: the whole parent-phase plan is consolidated on PR #30 from the approved roadmap and recorded 3B decisions. Review the entire documentation diff and integrate after required repository checks. Then begin one 3B/3C runtime line with its impact/recovery record, implement through automated proof, and stop at the combined physical boundary. No new plan approval is needed for these unchanged authorized decisions. No 3B/3C code, deployed migration, worker or new APK exists yet.
+Current handoff: the parent plan was integrated through PR #30 and its remaining 3B/3C implementation now owns PR #32. The planned backend, queue, worker, migration/recovery and combined physical gates have passed. Complete final documentation/PR checks and obtain the separate explicit Level 3 merge approval before integration. Retain the installed tested APK and protected conflict evidence; do not restart planning, rebuild the runtime or repeat accepted phone gates for this status update.

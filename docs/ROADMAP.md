@@ -695,7 +695,7 @@ Future template/run/lifecycle additions do not retroactively make this existing 
 
 ---
 
-# Phase 3 — Run identity, Room work list, and offline field actions — 3A MERGED / 3B–3C PHONE GATE STAGED
+# Phase 3 — Run identity, Room work list, and offline field actions — 3A MERGED / 3B–3C GATES PASSED / MERGE PENDING
 
 ## Goal
 
@@ -741,7 +741,7 @@ Minimum cached data:
 
 ## 3B — Offline Start/Finish queue
 
-Whole-phase implementation plan: [PHASE_3_IMPLEMENTATION_PLAN_2026-10-02.md](PHASE_3_IMPLEMENTATION_PLAN_2026-10-02.md) covers **all 3A/3B/3C sections**, preserving merged 3A and its accepted evidence. Authority is the approved 2026-09-14 roadmap plus the detailed 3B proposal approved at 2026-10-02 22:55:40 America/Chicago. Timestamp tolerance, pending-action handoff guard and A → B → A protection remain approved. The consolidated plan fills scheduling/recovery/test details for the already-planned 3C worker without adding product scope. Build remaining 3B/3C together on one runtime line after documentation integration; test the queue before attaching its worker, then run one combined remaining-phase physical gate. No intermediate letter-only plan approval or phone gate is required. Runtime implementation and its Level 3 pre-merge approval remain pending.
+Whole-phase implementation plan: [PHASE_3_IMPLEMENTATION_PLAN_2026-10-02.md](PHASE_3_IMPLEMENTATION_PLAN_2026-10-02.md) covers **all 3A/3B/3C sections**, preserving merged 3A and its accepted evidence. Authority is the approved 2026-09-14 roadmap plus the detailed 3B proposal approved at 2026-10-02 22:55:40 America/Chicago. Timestamp tolerance, pending-action handoff guard and A → B → A protection remain approved. The consolidated plan fills scheduling/recovery/test details for the already-planned 3C worker without adding product scope. Build remaining 3B/3C together on one runtime line after documentation integration; test the queue before attaching its worker, then run one combined remaining-phase physical gate. No intermediate letter-only plan approval or phone gate is required. Remaining 3B/3C runtime implementation and its backend, automated and combined physical gates have passed on PR #32; explicit Level 3 pre-merge approval and integration remain pending.
 
 Each local field action has its own UUID and stores:
 
@@ -829,9 +829,9 @@ At minimum:
 
 ## Physical gate
 
-Current staging (2026-10-03): remaining 3B/3C is implemented on draft PR #32, `feat/phase-3-offline-actions-sync`. Corrected runtime **87e57d4fc476800be96f6730e6631c23f1729536** passed exact-head Android/Admin/database/governance CI, including legacy assigned/started/completed Room v1 upgrade regressions. Candidate version 4 and evidence-preserving recovery version 5 retain package/signer and Room v2; both artifacts are verified and retained. See [PHASE_3_IMPLEMENTATION_RECORD_2026-10-03.md](PHASE_3_IMPLEMENTATION_RECORD_2026-10-03.md) for hashes, CI, live migration parity and recovery. Prior 9106ff3 artifacts are superseded before phone installation. Physical evidence, explicit Level 3 merge approval and integration remain **PENDING**. Next checkpoint: update the existing app with candidate 87e57d4 and open it, then follow the combined gate one step at a time.
+Current completion checkpoint (2026-10-03): remaining 3B/3C implementation on PR #32, `feat/phase-3-offline-actions-sync`, passed backend/automated and the combined phone/laptop gate. Installed runtime **87e57d4fc476800be96f6730e6631c23f1729536** proved offline Start/Finish, force-stop/reopen persistence, protected Admin reassignment conflict, actual ordered background acceptance before reopening, unchanged original event times, foreground idempotency and Sign Out/second-account/original-owner isolation. Candidate version 4 and evidence-preserving recovery version 5 retain package/signer and Room v2; both artifacts remain verified and retained. See [PHASE_3_IMPLEMENTATION_RECORD_2026-10-03.md](PHASE_3_IMPLEMENTATION_RECORD_2026-10-03.md) for exact identities, CI, live migration parity, physical evidence and recovery. The initial connected attempt was explained by Wi-Fi staying on in Airplane mode; fresh safe fixtures completed the true offline gate. Accepted 3A and current physical observations are retained, with no repeat phone gate required. Next checkpoint: final documentation/PR checks and explicit Level 3 merge approval for PR #32. Integration remains **PENDING**.
 
-Retain the passed 3A gate. Run the single combined remaining-phase gate in the linked parent plan now that both 3B and 3C passed automated proof:
+Retained 3A and the following combined remaining-phase gate are now PASS; these are recorded evidence, not a new request to repeat testing:
 
 1. update the existing installation and refresh at least two disposable assignments online;
 2. Start/Finish offline and preserve pending progress through force-stop/reopen;

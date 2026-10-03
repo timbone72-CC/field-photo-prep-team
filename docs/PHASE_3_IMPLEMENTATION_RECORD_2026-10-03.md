@@ -4,6 +4,8 @@ Scope key: `phase-3-offline-actions-sync`. Change level: **Level 3**.
 Authoritative branch: `feat/phase-3-offline-actions-sync`; draft PR **#32**.
 Baseline / recovery source: main `8a33ff7490716ea35520c8f97085cfee4f0883be`.
 
+Current checkpoint (2026-10-03 14:01 America/Chicago): **backend, automated and combined physical gates PASS; final documentation checks, explicit Level 3 merge approval and integration PENDING**. Installed runtime remains `87e57d4fc476800be96f6730e6631c23f1729536`. The chronological pending/blocked observations below are superseded by the final gate result at the end.
+
 ## Authority and scope
 
 Implement the remaining Phase 3B/3C together under `PHASE_3_IMPLEMENTATION_PLAN_2026-10-02.md`. The original approved Phase 3 scope, detailed 3B approval on 2026-10-02 and operator **Next** on 2026-10-03 authorize this unchanged runtime batch. PR #30 consolidated the complete parent plan; PR #31 clarified governance. Existing Phase 3A phone/backend evidence is retained, not restarted. This is the single runtime line; preflight found no open overlapping PRs and main matched the baseline.
@@ -143,3 +145,28 @@ Inline operator screenshot **1791039313611.jpeg** directly shows **TEST-P3-CONFL
 Read-only ledger check after the screenshot still finds exactly SYNC's original START **c983ba49-0dca-4f55-bc7a-0c512e37c143** and COMPLETE **5566db92-cf5d-4bfc-93c6-cb91f8c06934**, unchanged event/acceptance timestamps and FIELD_COMPLETE projection; CONFLICT still has zero accepted actions and null server progress. No unauthorized/duplicate/retimed effect is observed. Screenshot proves visible protected conflict and accepted completion; explicit foreground-refresh and account-switch results are the remaining device checks.
 
 Next grouped checkpoint: Refresh Assignments and verify those same states; Sign Out and sign in as the other existing Contractor, whose CONFLICT is a normal ASSIGNED work order and whose view must not show SYNC or the original owner's saved-progress conflict; Sign Out and return to the original Contractor, confirming its Needs review and completed SYNC survive. Inspect only, without creating new actions on the second account. Record that operator result once and verify ledger identities unchanged. Remaining physical foreground/account checks and explicit Level 3 merge approval **PENDING**, runtime **NOT MERGED**.
+
+## Combined physical gate complete — 2026-10-03 14:01 America/Chicago — PASS
+
+The operator replied **works** to the remaining grouped checks: foreground **Refresh Assignments** preserved SYNC FIELD COMPLETE and CONFLICT Needs review; Sign Out and the existing second Contractor showed no SYNC and showed CONFLICT as ordinary ASSIGNED without the original owner's saved-progress warning; Sign Out and return to the original Contractor restored its completed SYNC and protected CONFLICT warning. Accept this evidence once. No more phone testing is required for this unchanged runtime. Additional screenshot **1791054264180.jpeg**, supplied at 14:04 and downloaded/viewed successfully, shows the original view still retaining CONFLICT Needs review with saved-progress wording and SYNC FIELD COMPLETE.
+
+Read-only final ledger/projection check agrees: SYNC retains exactly its original two accepted START/COMPLETE UUIDs, owner/assignment instance, original offline event times and original background acceptance times; CONFLICT remains ASSIGNED to the other Contractor with zero accepted actions and null server progress. Foreground refresh/account switching did not duplicate, retime, authorize or rebind the saved original-owner action. No manual database repair, reset, uninstall, Clear data, new Auth account or battery exemption was used.
+
+| Required boundary | Final evidence |
+| --- | --- |
+| Existing installation upgrade and two-WO download | Operator PASS; consistent server receipt/assignment identity. |
+| Offline Start/Finish and second-WO Start | Operator PASS; both server ledgers zero until reconnect. |
+| Pending state after force-stop/reopen offline | Operator PASS; both waiting-to-sync states retained. |
+| Authorized Admin reassignment race | Other Contractor/new instance on server; old offline progress remains protected. |
+| Actual background sync before app reopen | Read-only background observation: original ordered START/COMPLETE accepted once, original tap times retained. |
+| Visible accepted versus Needs review state | Screenshot PASS and subsequent operator confirmation. |
+| Foreground idempotency and account isolation | Operator PASS; immutable server ledger unchanged after refresh/switch/return. |
+| Retained Phase 3A gates | Prior passed evidence retained; no restart of that scope. |
+
+Current automation evidence: exact tested runtime **87e57d4fc476800be96f6730e6631c23f1729536** remains installed. Before this closeout, documentation head **9eab0b40b6a568a85c45fb258555e2a015ee05ff** also passed complete Android **37131440159**, Admin **37131440132**, database **37131440110** and governance checks; source comparison confirms only documentation changed since the phone-tested runtime. This final checkpoint changes only record/roadmap/plan status, retaining all runtime, migrations, CI, package/signer and candidate/recovery bytes. No repeated local complete suite or new APK is required. Final checks on the documentation closeout head must pass before merge.
+
+Deployed history contains all **21** repository migrations in exactly matching version order, including **20261003122905** and **20261003123241**. Earlier real backend/grant/RLS/advisor and data-preservation results remain applicable; this closeout introduces no deployed change. Retain the two synthetic physical test WOs, original connected-attempt acceptance records, server ledger and original owner's unresolved local conflict as deliberate evidence. Do not delete/reassign-back/reset them merely to hide the expected Needs review result. There is no customer cleanup or account mutation in this closeout.
+
+Recovery remains the staged version-5 same-package/signer Room-v2 build with actions/scheduling disabled; preserve cached/action evidence and additive server tables. Runtime source rollback reference remains **8a33ff7490716ea35520c8f97085cfee4f0883be**; an old v1 APK must not be installed over v2. PR #32 is the only open authoritative scope, main is still that baseline, and there are no change-request reviews or unresolved review threads at final inspection.
+
+Current status: **BACKEND/AUTOMATED/PHYSICAL GATES PASS — FINAL DOCUMENTATION CHECKS AND EXPLICIT LEVEL 3 MERGE APPROVAL PENDING**. Phase 3 behavior/evidence is ready for integration but the whole phase cannot be called integrated until approval and merge agree. Next exact checkpoint: final PR checks and explicit operator approval to merge PR #32. No Phase 4 runtime implementation is started by this completion record. Runtime **NOT MERGED**; operator Level 3 merge approval **PENDING**.
