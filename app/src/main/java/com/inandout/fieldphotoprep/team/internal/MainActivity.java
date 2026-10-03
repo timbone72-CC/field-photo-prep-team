@@ -564,7 +564,8 @@ public final class MainActivity extends Activity {
         if (currentSession != null
                 && currentSession.userId.equals(workOrder.assignedUserId)
                 && "IN_PROGRESS".equals(workOrder.fieldStatus)
-                && !workOrder.pendingAssigneeUserId.isEmpty()) {
+                && !workOrder.pendingAssigneeUserId.isEmpty()
+                && BuildConfig.FIELD_SYNC_ENABLED) {
             TextView request =
                     text(
                             "Admin requested that this in-progress WO be reassigned. Approve the"

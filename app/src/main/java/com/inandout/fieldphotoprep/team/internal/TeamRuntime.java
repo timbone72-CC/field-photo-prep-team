@@ -34,6 +34,10 @@ final class TeamRuntime {
     }
 
     List<SupabaseApi.WorkOrder> refresh(SupabaseApi.AuthSession expected, long generation) throws Exception {
+        if (!BuildConfig.FIELD_SYNC_ENABLED) {
+            if (!sessions.matches(generation, expected.userId, expected.organizationId)) throw new SessionCoordinator.SessionChanged();
+            return assignments.loadCached(expected);
+        }
         synchronized (sync.drainLock) {
             SupabaseApi.AuthSession s =
                     sessions.authorized(generation, expected.userId, expected.organizationId, true);
@@ -92,6 +96,7 @@ final class TeamRuntime {
     }
 
     void handoff(SupabaseApi.AuthSession expected, long gen, String wo, boolean accept) throws Exception {
+        if (!BuildConfig.FIELD_SYNC_ENABLED) throw new IllegalStateException("Recovery mode is read only.");
         synchronized (sync.drainLock) {
             synchronized (actionCreationLock) {
                 if (accept) sync.requireHandoffReady(expected.userId, expected.organizationId, wo);

@@ -190,6 +190,9 @@ signOutButton.addEventListener('click', () => {
   currentUser = null;
   assignableUsers = [];
   workOrderRows = [];
+  createPhotos.templates = []; editPhotos.templates = [];
+  createPhotos.load(null); editPhotos.load(null);
+  fillWorkTypes();
   workOrders.replaceChildren();
   rlsResult.textContent = '';
   accountHeading.textContent = 'Signed in';
