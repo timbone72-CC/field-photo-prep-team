@@ -42,7 +42,11 @@ Preserve FWH's server-controlled organization/role/assignment authority, protect
 
 The existing CHANGE_CONTROL_CONTRACT.md defines Level 1/2/3 and approvals. If uncertain, classify upward; scope expansion requires reassessment. Level 3 always requires **explicit operator pre-merge approval**. Design approval and a PR field marked APPROVED are not independent proof of that operator decision.
 
-Do not repeatedly request permission for unchanged approved Level 1/2 work. Build through the largest safe verifiable batch and stop only at real decisions, contradicted physical/provider evidence, required failures, unapproved scope or the Level-3 merge gate.
+The **numbered parent phase** is the design-approval unit. Its plan must cover every lettered section before implementation begins. A single recorded parent-phase approval authorizes the included implementation across all change levels within unchanged scope; Level 3 still requires separate explicit approval before each runtime merge. Lettered sections organize implementation and evidence, not repeated design approvals.
+
+Do not repeatedly request permission for unchanged approved work because a lettered section, branch/PR, work session or device gate ends. Build through the largest safe verifiable batch and stop only at real decisions, contradicted physical/provider evidence, required failures, unapproved scope or the Level-3 merge gate.
+
+Record the parent-phase plan/revision, approval evidence and planned dependency/evidence boundaries in the active record. Detailed impact records and implementation notes may refine already-approved behavior without becoming new approval gates. A partial-section approval authorizes only its recorded scope; do not infer approval of unspecified remaining sections. When an existing phase has material gaps, preserve approved decisions and passing evidence, finish the missing remainder as one consolidated amendment, and request approval only for material decisions not already authorized. Do not retroactively invalidate completed work or repeat accepted tests merely to comply with the clarified planning format.
 
 ## Durable handoff and closeout
 

@@ -11,6 +11,8 @@ Field Work Hub (FWH) is the separate multi-user contractor dispatch, offline fie
 
 Before starting/resuming runtime or phase work, inspect current main, open relevant PRs/branches, the active impact/build-state record and the approved relevant phase of docs/ROADMAP.md. No unapproved phase implementation; if the plan lacks behavior, failure handling, protected boundaries, verification and a completion gate, **stop and finish the plan**.
 
+**Whole-phase approval unit:** a phase means the numbered parent (for example, Phase 3), including every lettered section (3A, 3B, 3C). Before its runtime work starts, plan the entire parent phase, its failure behavior, dependencies, verification and genuine device/provider gates. One recorded plan approval authorizes implementation of all included sections within unchanged scope. A letter, branch, PR, session boundary or completed phone test does not create another design-approval gate. If material planning gaps are found during an existing phase, preserve accepted work/evidence and complete the missing remainder together; do not restart planning one letter at a time. CHANGE_CONTROL_CONTRACT.md and docs/PHASE_STAGING_DOCTRINE.md define amendments and evidence gates.
+
 Before runtime changes, also read CHANGE_CONTROL_CONTRACT.md and TESTING_CONTRACT.md. Read INTEGRATION_CONTRACT.md for Supabase/Auth/RLS, Room/offline work, reassignment, photos, background sync, provider storage, uploads, cleanup or another integration boundary. Read docs/PHASE_STAGING_DOCTRINE.md and the current/next phase for phase transitions or genuine physical/provider gates. Documentation-only work must read the affected document and applicable governance/change rules.
 
 ## Required work classification

@@ -20,7 +20,11 @@ If the relevant roadmap phase does not contain an approved implementation plan, 
 
 ## Core rule
 
-No runtime phase begins until `docs/ROADMAP.md` contains an approved implementation plan for that phase. If the plan is incomplete, planning is the work.
+No runtime phase begins until `docs/ROADMAP.md`, directly or through linked governing plan documents, contains an approved implementation plan for the **whole numbered parent phase**, including all lettered sections. For example, approval of a complete Phase 3 plan covers 3A, 3B and 3C; those letters are implementation sections, not independent design-approval units. The complete plan must define behavior, authority/protection, failure/recovery, dependencies, verification, actual device/provider boundaries and completion criteria across the entire phase.
+
+One recorded parent-phase plan approval authorizes its included implementation within unchanged scope. Routine implementation choices, impact-record updates, focused bug fixes and progression through lettered sections do not require another plan approval. Additional plan approval is required for a material change to approved scope, product behavior, authority/protection, or evidence that requires changing approved design. A required test failure stops the affected path until fixed and verified; it does not automatically reopen plan approval. Level 3 pre-merge approval remains a separate requirement.
+
+If material planning gaps are discovered after a phase has started, preserve approved decisions and accepted evidence, complete the missing remainder together, and record a consolidated amendment. Request approval only for material decisions not already authorized. Do not ask for a succession of letter-by-letter plans or rerun passed gates merely because planning documentation was corrected. An incomplete outline or a single-section approval must not be relabeled as complete parent-phase approval.
 
 No intentional feature work is performed directly on `main`.
 

@@ -27,6 +27,18 @@ Default pattern:
 
 A phone gate is an evidence checkpoint, not an automatic reason to stop development after every small slice.
 
+## Numbered parent phase and one plan approval
+
+A **phase** is the numbered parent in the roadmap, such as Phase 3. Its lettered sections, such as 3A/3B/3C, divide implementation and evidence inside that phase. They are not separate design-approval units.
+
+Before starting any section, complete the entire parent-phase plan with behavior, protected boundaries, failure/recovery, verification and completion criteria for every included section. Identify dependencies and each genuine phone/laptop/provider gate upfront, explaining what automation cannot prove and what subsequent work depends on it. Do not approve only the next letter and defer planning the remaining letters until later.
+
+Record one parent-phase plan approval and proceed through its included sections within unchanged scope. An impact record or technical implementation note may refine approved behavior without requiring another design approval. A lettered-section, branch/PR, session boundary or passed phone gate is not a reason to request permission again. Separate explicit Level 3 pre-merge approval remains mandatory.
+
+Multiple real-device/provider gates are permitted where actual evidence dependencies require them. Build all independent work that can safely be proven first, combine compatible checks, and pause only dependent work at the documented boundary. A newly discovered real boundary must have a recorded reason; it does not by itself create another design-approval gate.
+
+For a phase already underway, retain approved decisions, completed work and accepted evidence. If material planning gaps exist, finish the missing remainder together in one consolidated amendment; seek approval only for material decisions not already authorized. Do not restart completed sections, infer whole-phase approval from a partial approval, or repeat passed gates to satisfy a new document format.
+
 ## Straight-line development rule
 
 Within an approved phase:
@@ -42,7 +54,7 @@ Within an approved phase:
 
 ## Phase-plan gate
 
-Before runtime implementation begins for a phase, the roadmap must define:
+Before runtime implementation begins for the numbered parent phase, the roadmap or its linked governing plan documents must define the following across **all** lettered sections:
 
 - user-visible workflow;
 - authority boundaries;
@@ -50,12 +62,12 @@ Before runtime implementation begins for a phase, the roadmap must define:
 - conflict/reassignment/cancellation behavior where applicable;
 - protected identity/data rules;
 - failure behavior;
-- implementation boundaries;
+- implementation boundaries and dependencies between sections;
 - automated verification;
-- physical-device/provider gate where needed;
+- each physical-device/laptop/provider gate where needed, its evidence purpose and the subsequent work it gates;
 - completion criteria.
 
-If any material item is missing, implementation is blocked until planning is completed and approved.
+If any material item is missing, complete the entire missing parent-phase scope before dependent implementation. Obtain approval for material decisions not already authorized; routine refinement of approved behavior does not create a new plan-approval gate.
 
 ## What may be decided inside an approved phase
 
@@ -81,7 +93,7 @@ Stop the affected path when:
 - protected local work/photos could be lost, misattributed, or silently overwritten;
 - an upload/result becomes ambiguous and the next action would be a blind retry.
 
-The stop is targeted. Independent work may continue only when it does not depend on the failed assumption and cannot hide or worsen the problem.
+The stop is targeted. Independent work may continue only when it does not depend on the failed assumption and cannot hide or worsen the problem. A failure is fixed and reverified within approved scope when possible. Reopen design approval only when resolving it requires a material change to approved scope, behavior, authority/protection or design. Record that change as one parent-phase amendment, rather than restarting letter-by-letter approvals.
 
 ## Staging standard at a genuine device boundary
 
