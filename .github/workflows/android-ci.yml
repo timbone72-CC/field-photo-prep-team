@@ -41,6 +41,8 @@ jobs:
           grep -q 'Approve Reassignment' app/src/main/java/com/inandout/fieldphotoprep/team/internal/MainActivity.java
           grep -q 'Decline Reassignment' app/src/main/java/com/inandout/fieldphotoprep/team/internal/MainActivity.java
           grep -q 'Assignment receipt: Confirmed' app/src/main/java/com/inandout/fieldphotoprep/team/internal/MainActivity.java
+      - name: Run focused shared-session callback regression tests
+        run: gradle :app:testDebugUnitTest --tests '*SessionCoordinatorTest' --tests '*SessionOperationGuardTest'
       - name: Run complete Phase 3 JVM tests
         run: gradle :app:testDebugUnitTest
       - name: Build internal Team APK

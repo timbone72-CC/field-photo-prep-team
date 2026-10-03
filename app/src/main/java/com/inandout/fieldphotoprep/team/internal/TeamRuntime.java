@@ -31,9 +31,8 @@ final class TeamRuntime {
         return instance;
     }
 
-    List<SupabaseApi.WorkOrder> refresh(SupabaseApi.AuthSession expected) throws Exception {
+    List<SupabaseApi.WorkOrder> refresh(SupabaseApi.AuthSession expected, long generation) throws Exception {
         synchronized (sync.drainLock) {
-            long generation = sessions.generation();
             SupabaseApi.AuthSession s =
                     sessions.authorized(generation, expected.userId, expected.organizationId, true);
             if (BuildConfig.FIELD_SYNC_ENABLED) {
@@ -74,10 +73,9 @@ final class TeamRuntime {
         return guarded.refresh(expected);
     }
 
-    FieldAction create(SupabaseApi.AuthSession expected, String wo, String run, String kind)
+    FieldAction create(SupabaseApi.AuthSession expected, long gen, String wo, String run, String kind)
             throws Exception {
         synchronized (actionCreationLock) {
-            long gen = sessions.generation();
             if (!sessions.matches(gen, expected.userId, expected.organizationId))
                 throw new SessionCoordinator.SessionChanged();
             if (!BuildConfig.FIELD_SYNC_ENABLED)
@@ -91,11 +89,10 @@ final class TeamRuntime {
         }
     }
 
-    void handoff(SupabaseApi.AuthSession expected, String wo, boolean accept) throws Exception {
+    void handoff(SupabaseApi.AuthSession expected, long gen, String wo, boolean accept) throws Exception {
         synchronized (sync.drainLock) {
             synchronized (actionCreationLock) {
                 if (accept) sync.requireHandoffReady(expected.userId, expected.organizationId, wo);
-                long gen = sessions.generation();
                 SupabaseApi.AuthSession s =
                         sessions.authorized(gen, expected.userId, expected.organizationId, true);
                 if (!sessions.matches(gen, expected.userId, expected.organizationId))

@@ -140,6 +140,24 @@ public class SessionCoordinatorTest {
         assertEquals("rotated-2", sessions.load().refreshToken);
     }
 
+    @Test
+    public void olderUiCallbackCannotRunAfterWorkerRejectOrAnotherLogin() {
+        SessionCoordinator sessions = new SessionCoordinator(store, token -> expired("a", "rotated"));
+        long gen = sessions.beginLogin();
+        sessions.install(gen, expired("a", "original"));
+        AtomicInteger callbacks = new AtomicInteger();
+        assertTrue(sessions.runIfCurrent(gen, callbacks::incrementAndGet));
+        sessions.reject(gen);
+        assertFalse(sessions.runIfCurrent(gen, callbacks::incrementAndGet));
+        assertTrue(sessions.runIfSignedOutAfter(gen, callbacks::incrementAndGet));
+        long login = sessions.beginLogin();
+        sessions.install(login, expired("b", "other"));
+        assertFalse(sessions.runIfCurrent(gen, callbacks::incrementAndGet));
+        assertFalse(sessions.runIfSignedOutAfter(gen, callbacks::incrementAndGet));
+        assertEquals(2, callbacks.get());
+        assertEquals("b", sessions.load().userId);
+    }
+
     static SupabaseApi.AuthSession expired(String owner, String refresh) {
         return new SupabaseApi.AuthSession(
                 "access", refresh, owner, "test@example.invalid", "CONTRACTOR", "org", 0);

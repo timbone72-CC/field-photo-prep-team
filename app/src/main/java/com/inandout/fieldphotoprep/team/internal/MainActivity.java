@@ -55,12 +55,15 @@ public final class MainActivity extends Activity {
                         executor.execute(
                                 () -> {
                                     long operation = sessionOperations.capture();
+        long sessionGeneration = runtime.sessions.generation();
                                     SupabaseApi.AuthSession s = runtime.sessions.load();
-                                    if (s == null) return;
+                                    if (s == null) {
+                                        postSessionExpired(operation, sessionGeneration);
+                                        return;
+                                    }
                                     List<SupabaseApi.WorkOrder> cached =
                                             assignmentRepository.loadCached(s);
-                                    postIfCurrent(
-                                            operation,
+                                    postIfCurrent(operation, sessionGeneration,
                                             () -> {
                                                 if (currentSession != null
                                                         && currentSession.userId.equals(s.userId)
@@ -184,6 +187,7 @@ public final class MainActivity extends Activity {
 
     private void restoreSavedSession() {
         long operation = sessionOperations.capture();
+        long sessionGeneration = runtime.sessions.generation();
         executor.execute(
                 () -> {
                     SupabaseApi.AuthSession saved = runtime.sessions.load();
@@ -192,8 +196,7 @@ public final class MainActivity extends Activity {
                     }
 
                     List<SupabaseApi.WorkOrder> cached = assignmentRepository.loadCached(saved);
-                    postIfCurrent(
-                            operation,
+                    postIfCurrent(operation, sessionGeneration,
                             () ->
                                     showSignedIn(
                                             saved,
@@ -206,11 +209,10 @@ public final class MainActivity extends Activity {
 
                     try {
                         runtime.scheduler.ensure(saved);
-                        List<SupabaseApi.WorkOrder> workOrders = runtime.refresh(saved);
+                        List<SupabaseApi.WorkOrder> workOrders = runtime.refresh(saved, sessionGeneration);
                         SupabaseApi.AuthSession refreshed = runtime.sessions.load();
                         if (refreshed == null) return;
-                        postIfCurrent(
-                                operation,
+                        postIfCurrent(operation, sessionGeneration,
                                 () ->
                                         showSignedIn(
                                                 refreshed,
@@ -218,25 +220,18 @@ public final class MainActivity extends Activity {
                                                 true,
                                                 getString(R.string.assignments_refreshed)));
                     } catch (IOException error) {
-                        postStatus(operation, "Offline — showing last downloaded assignments.");
+                        postStatus(operation, sessionGeneration, "Offline — showing last downloaded assignments.");
                     } catch (SupabaseApi.ApiException error) {
                         if (error.isAuthenticationRejection()) {
-                            sessionOperations.runIfCurrent(operation, runtime::signOut);
-                            postIfCurrent(
-                                    operation,
-                                    () ->
-                                            showSignedOutUi(
-                                                    "Team session expired. Sign in again;"
-                                                            + " downloaded work was preserved."));
+                            runtime.sessions.reject(sessionGeneration);
+                            postSessionExpired(operation, sessionGeneration);
                         } else {
-                            postStatus(
-                                    operation,
+                            postStatus(operation, sessionGeneration,
                                     "Unable to refresh right now — showing last downloaded"
                                             + " assignments.");
                         }
                     } catch (Exception error) {
-                        postStatus(
-                                operation,
+                        postStatus(operation, sessionGeneration,
                                 "Unable to refresh right now — showing last downloaded"
                                         + " assignments.");
                     }
@@ -253,6 +248,7 @@ public final class MainActivity extends Activity {
 
         long operation = sessionOperations.invalidate(() -> {});
         long loginGeneration = runtime.sessions.beginLogin();
+        long sessionGeneration = loginGeneration;
         setLoading(true, getString(R.string.signing_in));
         executor.execute(
                 () -> {
@@ -263,10 +259,9 @@ public final class MainActivity extends Activity {
                                 () -> runtime.sessions.install(loginGeneration, session))) return;
                         if (!runtime.sessions.matches(
                                 loginGeneration, session.userId, session.organizationId)) return;
-                        postStatus(operation, getString(R.string.loading_work));
-                        List<SupabaseApi.WorkOrder> workOrders = runtime.refresh(session);
-                        postIfCurrent(
-                                operation,
+                        postStatus(operation, sessionGeneration, getString(R.string.loading_work));
+                        List<SupabaseApi.WorkOrder> workOrders = runtime.refresh(session, sessionGeneration);
+                        postIfCurrent(operation, sessionGeneration,
                                 () ->
                                         showSignedIn(
                                                 session,
@@ -275,8 +270,7 @@ public final class MainActivity extends Activity {
                                                 "Signed in successfully."));
                     } catch (Exception error) {
                         String message = safeMessage(error, "Sign-in failed.");
-                        postIfCurrent(
-                                operation,
+                        postIfCurrent(operation, sessionGeneration,
                                 () -> {
                                     passwordInput.setText("");
                                     setLoading(false, message);
@@ -325,6 +319,7 @@ public final class MainActivity extends Activity {
 
     private void refreshAssignments() {
         long operation = sessionOperations.capture();
+        long sessionGeneration = runtime.sessions.generation();
         SupabaseApi.AuthSession session = currentSession;
         if (session == null) {
             statusText.setText("Sign in again before refreshing assignments.");
@@ -338,11 +333,10 @@ public final class MainActivity extends Activity {
         executor.execute(
                 () -> {
                     try {
-                        List<SupabaseApi.WorkOrder> workOrders = runtime.refresh(session);
+                        List<SupabaseApi.WorkOrder> workOrders = runtime.refresh(session, sessionGeneration);
                         SupabaseApi.AuthSession refreshed = runtime.sessions.load();
                         if (refreshed == null) return;
-                        postIfCurrent(
-                                operation,
+                        postIfCurrent(operation, sessionGeneration,
                                 () -> {
                                     progress.setVisibility(View.GONE);
                                     refreshAssignmentsButton.setEnabled(true);
@@ -353,8 +347,7 @@ public final class MainActivity extends Activity {
                                             getString(R.string.assignments_refreshed));
                                 });
                     } catch (IOException error) {
-                        postIfCurrent(
-                                operation,
+                        postIfCurrent(operation, sessionGeneration,
                                 () -> {
                                     progress.setVisibility(View.GONE);
                                     refreshAssignmentsButton.setEnabled(true);
@@ -363,28 +356,20 @@ public final class MainActivity extends Activity {
                                 });
                     } catch (SupabaseApi.ApiException error) {
                         if (error.isAuthenticationRejection()) {
-                            sessionOperations.runIfCurrent(operation, runtime::signOut);
-                            postIfCurrent(
-                                    operation,
-                                    () ->
-                                            showSignedOutUi(
-                                                    "Team session expired. Sign in again;"
-                                                            + " downloaded work was preserved."));
+                            runtime.sessions.reject(sessionGeneration);
+                            postSessionExpired(operation, sessionGeneration);
                         } else {
-                            showRefreshFailure(
-                                    operation,
+                            showRefreshFailure(operation, sessionGeneration,
                                     safeMessage(error, "Unable to refresh assignments."));
                         }
                     } catch (Exception error) {
-                        showRefreshFailure(
-                                operation, safeMessage(error, "Unable to refresh assignments."));
+                        showRefreshFailure(operation, sessionGeneration, safeMessage(error, "Unable to refresh assignments."));
                     }
                 });
     }
 
-    private void showRefreshFailure(long operation, String message) {
-        postIfCurrent(
-                operation,
+    private void showRefreshFailure(long operation, long sessionGeneration, String message) {
+        postIfCurrent(operation, sessionGeneration,
                 () -> {
                     progress.setVisibility(View.GONE);
                     refreshAssignmentsButton.setEnabled(true);
@@ -643,15 +628,15 @@ public final class MainActivity extends Activity {
 
     private void queueFieldAction(SupabaseApi.WorkOrder workOrder, String kind) {
         long operation = sessionOperations.capture();
+        long sessionGeneration = runtime.sessions.generation();
         SupabaseApi.AuthSession session = currentSession;
         executor.execute(
                 () -> {
                     try {
-                        runtime.create(session, workOrder.id, workOrder.currentRunId, kind);
+                        runtime.create(session, sessionGeneration, workOrder.id, workOrder.currentRunId, kind);
                         List<SupabaseApi.WorkOrder> cached =
                                 assignmentRepository.loadCached(session);
-                        postIfCurrent(
-                                operation,
+                        postIfCurrent(operation, sessionGeneration,
                                 () ->
                                         showSignedIn(
                                                 session,
@@ -661,8 +646,7 @@ public final class MainActivity extends Activity {
                     } catch (Exception error) {
                         List<SupabaseApi.WorkOrder> cached =
                                 assignmentRepository.loadCached(session);
-                        postIfCurrent(
-                                operation,
+                        postIfCurrent(operation, sessionGeneration,
                                 () ->
                                         showSignedIn(
                                                 session,
@@ -676,6 +660,7 @@ public final class MainActivity extends Activity {
 
     private void respondToReassignment(String workOrderId, boolean accept) {
         long operation = sessionOperations.capture();
+        long sessionGeneration = runtime.sessions.generation();
         SupabaseApi.AuthSession session = currentSession;
         if (session == null) {
             statusText.setText("Sign in again before responding to reassignment.");
@@ -688,12 +673,11 @@ public final class MainActivity extends Activity {
         executor.execute(
                 () -> {
                     try {
-                        runtime.handoff(session, workOrderId, accept);
-                        List<SupabaseApi.WorkOrder> workOrders = runtime.refresh(session);
+                        runtime.handoff(session, sessionGeneration, workOrderId, accept);
+                        List<SupabaseApi.WorkOrder> workOrders = runtime.refresh(session, sessionGeneration);
                         SupabaseApi.AuthSession refreshed = runtime.sessions.load();
                         if (refreshed == null) return;
-                        postIfCurrent(
-                                operation,
+                        postIfCurrent(operation, sessionGeneration,
                                 () -> {
                                     progress.setVisibility(View.GONE);
                                     refreshAssignmentsButton.setEnabled(true);
@@ -708,25 +692,17 @@ public final class MainActivity extends Activity {
                                                             + " assigned to you.");
                                 });
                     } catch (IOException error) {
-                        showRefreshFailure(
-                                operation, "Network required to respond to reassignment.");
+                        showRefreshFailure(operation, sessionGeneration, "Network required to respond to reassignment.");
                     } catch (SupabaseApi.ApiException error) {
                         if (error.isAuthenticationRejection()) {
-                            sessionOperations.runIfCurrent(operation, runtime::signOut);
-                            postIfCurrent(
-                                    operation,
-                                    () ->
-                                            showSignedOutUi(
-                                                    "Team session expired. Sign in again;"
-                                                            + " downloaded work was preserved."));
+                            runtime.sessions.reject(sessionGeneration);
+                            postSessionExpired(operation, sessionGeneration);
                         } else {
-                            showRefreshFailure(
-                                    operation,
+                            showRefreshFailure(operation, sessionGeneration,
                                     safeMessage(error, "Unable to respond to reassignment."));
                         }
                     } catch (Exception error) {
-                        showRefreshFailure(
-                                operation,
+                        showRefreshFailure(operation, sessionGeneration,
                                 safeMessage(error, "Unable to respond to reassignment."));
                     }
                 });
@@ -771,12 +747,19 @@ public final class MainActivity extends Activity {
         statusText.setText(message);
     }
 
-    private void postStatus(long operation, String message) {
-        postIfCurrent(operation, () -> statusText.setText(message));
+    private void postStatus(long operation, long sessionGeneration, String message) {
+        postIfCurrent(operation, sessionGeneration, () -> statusText.setText(message));
     }
 
-    private void postIfCurrent(long operation, Runnable action) {
-        mainHandler.post(() -> sessionOperations.runIfCurrent(operation, action));
+    private void postIfCurrent(long operation, long sessionGeneration, Runnable action) {
+        mainHandler.post(() -> sessionOperations.runIfCurrent(operation,
+                () -> runtime.sessions.runIfCurrent(sessionGeneration, action)));
+    }
+
+    private void postSessionExpired(long operation, long sessionGeneration) {
+        mainHandler.post(() -> sessionOperations.runIfCurrent(operation,
+                () -> runtime.sessions.runIfSignedOutAfter(sessionGeneration,
+                    () -> showSignedOutUi("Team session expired. Sign in again; downloaded work was preserved."))));
     }
 
     private String safeMessage(Exception error, String fallback) {

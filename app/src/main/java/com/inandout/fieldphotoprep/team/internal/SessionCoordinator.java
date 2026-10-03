@@ -78,6 +78,23 @@ final class SessionCoordinator {
         }
     }
 
+    boolean runIfCurrent(long generation, Runnable action) {
+        synchronized (stateLock) {
+            if (store.generation() != generation) return false;
+            action.run();
+            return true;
+        }
+    }
+
+    boolean runIfSignedOutAfter(long generation, Runnable action) {
+        synchronized (stateLock) {
+            long current = store.generation();
+            if (store.load() != null || (current != generation && current != generation + 1)) return false;
+            action.run();
+            return true;
+        }
+    }
+
     boolean reject(long generation) {
         synchronized (stateLock) {
             if (store.generation() != generation) return false;
