@@ -44,6 +44,10 @@ final class FieldAction {
     @NonNull public String serverUpdatedAt = "";
     @NonNull public String acceptedAt = "";
 
+    @NonNull @androidx.room.ColumnInfo(defaultValue="''") public String requirementRevision = "";
+    @NonNull @androidx.room.ColumnInfo(defaultValue="''") public String finishSetId = "";
+    @NonNull @androidx.room.ColumnInfo(defaultValue="''") public String finishPhotosJson = "";
+
     FieldAction(
             @NonNull String actionId,
             @NonNull String ownerId,

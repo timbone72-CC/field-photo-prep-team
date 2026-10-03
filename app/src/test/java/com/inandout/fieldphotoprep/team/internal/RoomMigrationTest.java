@@ -89,7 +89,7 @@ public class RoomMigrationTest {
         }
         TeamDatabase upgraded =
                 Room.databaseBuilder(context, TeamDatabase.class, name)
-                        .addMigrations(TeamDatabase.MIGRATION_1_2)
+                        .addMigrations(TeamDatabase.MIGRATION_1_2, TeamDatabase.MIGRATION_2_3)
                         .allowMainThreadQueries()
                         .build();
         assertEquals(1, upgraded.cachedWorkOrderDao().listForOwner("a", "org").size());
@@ -122,7 +122,7 @@ public class RoomMigrationTest {
         upgraded.close();
         TeamDatabase reopened =
                 Room.databaseBuilder(context, TeamDatabase.class, name)
-                        .addMigrations(TeamDatabase.MIGRATION_1_2)
+                        .addMigrations(TeamDatabase.MIGRATION_1_2, TeamDatabase.MIGRATION_2_3)
                         .allowMainThreadQueries()
                         .build();
         assertEquals("", reopened.cachedWorkOrderDao().find("a", "org", "1", "run-1").conflictReason);

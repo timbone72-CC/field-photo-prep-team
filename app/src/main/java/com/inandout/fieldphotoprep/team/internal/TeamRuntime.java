@@ -12,6 +12,7 @@ final class TeamRuntime {
     final CachedWorkOrderDao dao;
     final AssignmentRepository assignments;
     final ActionSyncCoordinator sync;
+    final PhotoOwner photos;
     final ActionScheduler scheduler;
     private final Object actionCreationLock = new Object();
 
@@ -19,7 +20,8 @@ final class TeamRuntime {
         dao = TeamDatabase.getInstance(context).cachedWorkOrderDao();
         sessions = new SessionCoordinator(new SecureSessionStore(context), api);
         assignments = new AssignmentRepository(api, new RoomAssignmentStore(dao));
-        sync = new ActionSyncCoordinator(dao, sessions, api);
+        photos = new PhotoOwner(context, dao, sessions);
+        sync = new ActionSyncCoordinator(dao, sessions, (token, action) -> { photos.ensureFrozenReadable(action); return api.submit(token, action); });
         scheduler = new ActionScheduler(context, dao);
     }
 
