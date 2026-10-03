@@ -695,7 +695,7 @@ Future template/run/lifecycle additions do not retroactively make this existing 
 
 ---
 
-# Phase 3 — Run identity, Room work list, and offline field actions — 3A MERGED / WHOLE-PHASE PLAN CONSOLIDATED
+# Phase 3 — Run identity, Room work list, and offline field actions — 3A MERGED / 3B–3C PHONE GATE STAGED
 
 ## Goal
 
@@ -829,7 +829,9 @@ At minimum:
 
 ## Physical gate
 
-Retain the passed 3A gate. Stage the single combined remaining-phase gate in the linked parent plan after both 3B and 3C pass automated proof:
+Current staging (2026-10-03): remaining 3B/3C is implemented on draft PR #32, `feat/phase-3-offline-actions-sync`. Corrected runtime **87e57d4fc476800be96f6730e6631c23f1729536** passed exact-head Android/Admin/database/governance CI, including legacy assigned/started/completed Room v1 upgrade regressions. Candidate version 4 and evidence-preserving recovery version 5 retain package/signer and Room v2; both artifacts are verified and retained. See [PHASE_3_IMPLEMENTATION_RECORD_2026-10-03.md](PHASE_3_IMPLEMENTATION_RECORD_2026-10-03.md) for hashes, CI, live migration parity and recovery. Prior 9106ff3 artifacts are superseded before phone installation. Physical evidence, explicit Level 3 merge approval and integration remain **PENDING**. Next checkpoint: update the existing app with candidate 87e57d4 and open it, then follow the combined gate one step at a time.
+
+Retain the passed 3A gate. Run the single combined remaining-phase gate in the linked parent plan now that both 3B and 3C passed automated proof:
 
 1. update the existing installation and refresh at least two disposable assignments online;
 2. Start/Finish offline and preserve pending progress through force-stop/reopen;
