@@ -1,10 +1,10 @@
 # Phase 3 combined offline actions and background sync — implementation record
 
 Scope key: `phase-3-offline-actions-sync`. Change level: **Level 3**.
-Authoritative branch: `feat/phase-3-offline-actions-sync`; draft PR **#32**.
+Authoritative branch: `feat/phase-3-offline-actions-sync`; PR **#32** (explicit merge approval recorded).
 Baseline / recovery source: main `8a33ff7490716ea35520c8f97085cfee4f0883be`.
 
-Current checkpoint (2026-10-03 14:01 America/Chicago): **backend, automated and combined physical gates PASS; final documentation checks, explicit Level 3 merge approval and integration PENDING**. Installed runtime remains `87e57d4fc476800be96f6730e6631c23f1729536`. The chronological pending/blocked observations below are superseded by the final gate result at the end.
+Current checkpoint (2026-10-03 14:14 America/Chicago): **backend, automated and combined physical gates PASS; explicit Level 3 merge approval APPROVED**. PR #32 is authoritative for final integration; Phase 3 is COMPLETE on its verified successful merge. Installed runtime remains `87e57d4fc476800be96f6730e6631c23f1729536`. The chronological pending/blocked observations below are superseded by the final gate result at the end.
 
 ## Authority and scope
 
@@ -170,3 +170,13 @@ Deployed history contains all **21** repository migrations in exactly matching v
 Recovery remains the staged version-5 same-package/signer Room-v2 build with actions/scheduling disabled; preserve cached/action evidence and additive server tables. Runtime source rollback reference remains **8a33ff7490716ea35520c8f97085cfee4f0883be**; an old v1 APK must not be installed over v2. PR #32 is the only open authoritative scope, main is still that baseline, and there are no change-request reviews or unresolved review threads at final inspection.
 
 Current status: **BACKEND/AUTOMATED/PHYSICAL GATES PASS — FINAL DOCUMENTATION CHECKS AND EXPLICIT LEVEL 3 MERGE APPROVAL PENDING**. Phase 3 behavior/evidence is ready for integration but the whole phase cannot be called integrated until approval and merge agree. Next exact checkpoint: final PR checks and explicit operator approval to merge PR #32. No Phase 4 runtime implementation is started by this completion record. Runtime **NOT MERGED**; operator Level 3 merge approval **PENDING**.
+
+## Explicit operator merge approval — 2026-10-03 14:14 America/Chicago
+
+The operator replied **Merge approved** to the request to merge PR #32 after all required automated and combined physical checks passed. This is the separate explicit **Level 3 pre-merge approval**, not inferred from earlier plan approval or a Works result. Approved review head: **e1616d75df79be3a6ed0b8ecea7bc71ac2406ea2**; complete Android **37146729633**, Admin **37146729612**, database **37146729675** and latest governance **111272805581** PASS. Phone-tested runtime remains **87e57d4fc476800be96f6730e6631c23f1729536**.
+
+This approval checkpoint changes documentation/status only. No runtime, migration, APK, signer, account, protected evidence or external deployment changes. The operator's approval covers this faithful recording and integration of the reviewed implementation; no replacement phone build or repeat physical gate is required. A premature ready-for-review transition previously failed the rule requiring a non-draft Level 3 PR to record APPROVED; draft status was restored and governance passed. Now record actual operator approval, run required final-head checks, then mark ready and merge with an expected-head check into unchanged main **8a33ff7490716ea35520c8f97085cfee4f0883be**, honoring branch protection.
+
+[PR #32](https://github.com/timbone72-CC/field-work-hub/pull/32) is authoritative for the final head, check results, merge outcome, timestamp and merge SHA. On its verified successful integration, **Phase 3 is COMPLETE**: retained 3A plus implemented 3B/3C, backend/automated/physical evidence, mirrored live state, verified recovery and explicit approval agree. Until GitHub confirms merged, integration remains pending; this record does not manufacture a merge result. Retain the installed candidate and all accepted/unresolved test evidence. Next phase is the roadmap's **Phase 4 — photo requirements, CameraX capture, protection and preparation**; its whole-phase implementation/recovery/gate details must be checked before starting runtime work.
+
+Current approval: **APPROVED**. Next exact action: final documentation-head CI, expected-head merge of PR #32, then verify main's runtime matches the phone-tested source. No new approval request is required for this authorized merge.
