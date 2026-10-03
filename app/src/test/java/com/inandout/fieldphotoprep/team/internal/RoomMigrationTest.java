@@ -21,6 +21,20 @@ import java.nio.charset.StandardCharsets;
 public class RoomMigrationTest {
     @Test
     public void realV1SchemaUpgradesPreservingTwoOwnersAndRestartedQueue() throws Exception {
+        verifyUpgrade("ASSIGNED", "START");
+    }
+
+    @Test
+    public void legacyStartedWorkAcquiresConfirmedIdentityAndCanFinishAfterUpgrade() throws Exception {
+        verifyUpgrade("IN_PROGRESS", "COMPLETE");
+    }
+
+    @Test
+    public void legacyCompletedWorkAcquiresIdentityWithoutInventingConflict() throws Exception {
+        verifyUpgrade("FIELD_COMPLETE", null);
+    }
+
+    private void verifyUpgrade(String state, String actionKind) throws Exception {
         Context context = RuntimeEnvironment.getApplication();
         String name = "migration-test.db";
         context.deleteDatabase(name);
@@ -62,7 +76,12 @@ public class RoomMigrationTest {
                 row.put("work_order_id", "1");
                 row.put("run_id", "run-1");
                 row.put("assigned_user_id", user);
-                row.put("field_status", "ASSIGNED");
+                row.put("field_status", user.equals("a") ? state : "ASSIGNED");
+                if (user.equals("a") && !state.equals("ASSIGNED")) {
+                    row.put("started_at", "2026-10-03T11:00:00Z");
+                    if (state.equals("FIELD_COMPLETE"))
+                        row.put("field_completed_at", "2026-10-03T11:01:00Z");
+                }
                 row.put("wo_number", "WO-1");
                 old.insertOrThrow("cached_work_orders", null, row);
             }
@@ -91,27 +110,39 @@ public class RoomMigrationTest {
         new RoomAssignmentStore(upgraded.cachedWorkOrderDao())
                 .replace(
                         OfflineActionTest.session("a", "org"),
-                        java.util.List.of(OfflineActionTest.wo("1", "instance")),
+                        java.util.List.of(snapshot(state)),
                         1);
-        FieldAction action =
-                upgraded.cachedWorkOrderDao()
-                        .createAction(
-                                OfflineActionTest.session("a", "org"),
-                                "1",
-                                "run-1",
-                                "START",
-                                "2026-10-03T12:00:00Z");
+        CachedWorkOrder refreshed = upgraded.cachedWorkOrderDao().find("a", "org", "1", "run-1");
+        assertEquals("instance", refreshed.assignmentInstanceId);
+        assertEquals("", refreshed.conflictReason);
+        assertEquals(state, refreshed.fieldStatus);
+        FieldAction action = actionKind == null ? null : upgraded.cachedWorkOrderDao().createAction(
+                OfflineActionTest.session("a", "org"), "1", "run-1", actionKind,
+                "2026-10-03T12:00:00Z");
         upgraded.close();
         TeamDatabase reopened =
                 Room.databaseBuilder(context, TeamDatabase.class, name)
                         .addMigrations(TeamDatabase.MIGRATION_1_2)
                         .allowMainThreadQueries()
                         .build();
-        assertEquals(
-                action.eventTime, reopened.cachedWorkOrderDao().action(action.actionId).eventTime);
-        assertEquals("PENDING", reopened.cachedWorkOrderDao().action(action.actionId).state);
+        assertEquals("", reopened.cachedWorkOrderDao().find("a", "org", "1", "run-1").conflictReason);
+        if (action != null) {
+            assertEquals(action.eventTime, reopened.cachedWorkOrderDao().action(action.actionId).eventTime);
+            assertEquals("PENDING", reopened.cachedWorkOrderDao().action(action.actionId).state);
+        } else assertEquals(0, reopened.cachedWorkOrderDao().actions("a", "org").size());
         assertEquals(1, reopened.cachedWorkOrderDao().listForOwner("b", "org").size());
         reopened.close();
         context.deleteDatabase(name);
+    }
+
+    private static SupabaseApi.WorkOrder snapshot(String state) {
+        SupabaseApi.WorkOrder work = new SupabaseApi.WorkOrder(
+                "1", "org", "run-1", 1, "WO-1", "Test address", "Inspection", "",
+                "2026-10-03", state, "a", "", "", "",
+                state.equals("ASSIGNED") ? "" : "2026-10-03T11:00:00Z",
+                state.equals("FIELD_COMPLETE") ? "2026-10-03T11:01:00Z" : "",
+                "2026-10-03T11:02:00Z");
+        work.assignmentInstanceId = "instance";
+        return work;
     }
 }

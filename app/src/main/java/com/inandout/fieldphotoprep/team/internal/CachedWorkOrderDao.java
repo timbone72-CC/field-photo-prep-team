@@ -78,6 +78,10 @@ abstract class CachedWorkOrderDao {
 
     boolean hasEvidence(CachedWorkOrder row, List<FieldAction> actions) {
         if (!row.startedAt.isEmpty()) return true;
+        return hasLocalActions(row, actions);
+    }
+
+    private boolean hasLocalActions(CachedWorkOrder row, List<FieldAction> actions) {
         for (FieldAction a : actions)
             if (a.workOrderId.equals(row.workOrderId) && a.runId.equals(row.runId)) return true;
         return false;
@@ -98,7 +102,9 @@ abstract class CachedWorkOrderDao {
             boolean evidence = hasEvidence(old, actions);
             if (next == null
                     || !next.runId.equals(old.runId)
-                    || (evidence && !next.assignmentInstanceId.equals(old.assignmentInstanceId))
+                    || (evidence
+                            && (!old.assignmentInstanceId.isEmpty() || hasLocalActions(old, actions))
+                            && !next.assignmentInstanceId.equals(old.assignmentInstanceId))
                     || (evidence && "CANCELLED".equals(next.fieldStatus))) {
                 if (evidence) {
                     markRunConflict(
