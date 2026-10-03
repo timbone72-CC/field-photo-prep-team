@@ -249,7 +249,7 @@ final class SupabaseApi
                 result.put("action_id",action.actionId); return new FieldActionResult(action,result.toString());
             }
             if (!java.util.Arrays.asList("APPLIED","ALREADY_APPLIED").contains(result.optString("outcome"))
-                    || !action.finishSetId.equals(result.optString("set_id"))) throw new IOException("Invalid photo metadata response");
+                    || !action.finishSetId.equals(result.optString("set_id"))) throw new IllegalStateException("Invalid photo metadata response");
         }
         if (!action.requirementRevision.isEmpty() || !action.finishSetId.isEmpty()) {
             request.put("p_requirement_revision",action.requirementRevision.isEmpty()?JSONObject.NULL:action.requirementRevision);

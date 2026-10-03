@@ -139,6 +139,7 @@ create table public.photo_finish_sets(
 create index photo_finish_sets_actor_org_idx on public.photo_finish_sets(actor_user_id,organization_id);
 create index photo_finish_sets_org_idx on public.photo_finish_sets(organization_id);
 create index photo_finish_sets_wo_idx on public.photo_finish_sets(work_order_id);
+create index photo_finish_sets_run_wo_idx on public.photo_finish_sets(run_id,work_order_id);
 create index photo_finish_sets_assignment_run_idx on public.photo_finish_sets(assignment_instance_id,run_id);
 alter table public.photo_finish_sets enable row level security;
 revoke all on public.photo_finish_sets from public,anon,authenticated;

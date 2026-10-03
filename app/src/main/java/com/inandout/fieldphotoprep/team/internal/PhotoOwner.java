@@ -77,7 +77,11 @@ final class PhotoOwner {
                         ||!p.organizationId.equals(a.organizationId)||!p.workOrderId.equals(a.workOrderId)
                         ||!p.runId.equals(a.runId)||!p.assignmentInstanceId.equals(a.assignmentInstanceId)
                         ||!p.requirementRevision.equals(a.requirementRevision)||!p.readable())
+                {
+                    if(p!=null) { p.state="PROBLEM";p.problem="Protected original needs recovery. Contact Admin.";dao.updatePhoto(p); }
+                    dao.markRunConflict(a.ownerId,a.organizationId,a.workOrderId,a.runId,"PHOTO_RECOVERY_REQUIRED");
                     throw new IOException("Frozen originals need recovery; metadata submission paused.");
+                }
             }
         } catch(org.json.JSONException e) { throw new IOException("Frozen metadata needs review",e); }
     }
@@ -85,6 +89,9 @@ final class PhotoOwner {
         if(initial==null||!initial.readable()) return;
         File temp=new File(initial.preparedPath+".tmp"); Bitmap decoded=null, oriented=null, scaled=null;
         try {
+            try(RandomAccessFile jpeg=new RandomAccessFile(f,"r")) {
+                if(jpeg.length()<4)return false;jpeg.seek(jpeg.length()-2);if(jpeg.readUnsignedShort()!=0xffd9)return false;
+            }
             BitmapFactory.Options bounds=new BitmapFactory.Options();bounds.inJustDecodeBounds=true;
             BitmapFactory.decodeFile(initial.originalPath,bounds);
             BitmapFactory.Options options=new BitmapFactory.Options();

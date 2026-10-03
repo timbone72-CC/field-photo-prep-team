@@ -28,6 +28,10 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
     private Camera camera;
     private ImageCapture capture;
     private boolean busy, cameraScreen, torch;
+    private long cameraEpoch;
+    private final androidx.room.InvalidationTracker.Observer observer = new androidx.room.InvalidationTracker.Observer("protected_photos", "field_actions", "cached_work_orders") {
+        @Override public void onInvalidated(java.util.Set<String> tables) { ui(() -> { if(cameraScreen)updateCounter();else showItems(); }); }
+    };
     private int flash=ImageCapture.FLASH_MODE_AUTO;
     private Button shutter;
     private PhotoRequirements requirements;
@@ -44,19 +48,20 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
         });
         message=new TextView(this);message.setTextSize(15);root.addView(message);
         content=new LinearLayout(this);content.setOrientation(LinearLayout.VERTICAL);root.addView(content,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);
+        TeamDatabase.getInstance(this).getInvalidationTracker().addObserver(observer);
         showItems();
     }
     @Override protected void onStart(){super.onStart();lifecycle.handleLifecycleEvent(Lifecycle.Event.ON_START);}
     @Override protected void onResume(){super.onResume();lifecycle.handleLifecycleEvent(Lifecycle.Event.ON_RESUME);if(content!=null&&!cameraScreen)showItems();}
     @Override protected void onPause(){lifecycle.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE);super.onPause();}
     @Override protected void onStop(){lifecycle.handleLifecycleEvent(Lifecycle.Event.ON_STOP);super.onStop();}
-    @Override protected void onDestroy(){lifecycle.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY);if(provider!=null)provider.unbindAll();super.onDestroy();}
+    @Override protected void onDestroy(){lifecycle.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY);TeamDatabase.getInstance(this).getInvalidationTracker().removeObserver(observer);if(provider!=null)provider.unbindAll();super.onDestroy();}
     private boolean current(){return !isDestroyed()&&!isFinishing()&&runtime.sessions.matches(generation,session.userId,session.organizationId);}
     private void ui(Runnable work){runOnUiThread(()->{if(current())work.run();else if(!isDestroyed())finish();});}
     private Button button(String label,LinearLayout target,Runnable work){Button b=new Button(this);b.setText(label);target.addView(b);b.setOnClickListener(v->work.run());return b;}
     private TextView text(String value,LinearLayout target){TextView t=new TextView(this);t.setText(value);t.setTextSize(17);t.setPadding(0,dp(5),0,dp(5));target.addView(t);return t;}
     private void showItems(){
-        cameraScreen=false;if(provider!=null)provider.unbindAll();camera=null;capture=null;torch=false;
+        cameraEpoch++;cameraScreen=false;if(provider!=null)provider.unbindAll();camera=null;capture=null;torch=false;
         runtime.photos.io.execute(()->{
             CachedWorkOrder row=runtime.dao.find(session.userId,session.organizationId,wo,run);
             if(row==null){ui(this::finish);return;}
@@ -102,7 +107,7 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
     }
     private void openCamera(){
         if(checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.CAMERA},8);return;}
-        cameraScreen=true;content.removeAllViews();PhotoRequirements.Item selected=requirements.enabledItem(item);
+        cameraScreen=true;long epoch=++cameraEpoch;content.removeAllViews();PhotoRequirements.Item selected=requirements.enabledItem(item);
         counter=text(selected==null?"Extra photos":selected.label,content);
         if(selected!=null&&!selected.instruction.isEmpty())text(selected.instruction,content);
         PreviewView preview=new PreviewView(this);content.addView(preview,new LinearLayout.LayoutParams(-1,0,1));
@@ -119,7 +124,7 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
         button("Done · choose another item",content,()->{if(!busy)showItems();});
         com.google.common.util.concurrent.ListenableFuture<ProcessCameraProvider> future=ProcessCameraProvider.getInstance(this);
         future.addListener(()->{
-            if(!current()||!cameraScreen)return;
+            if(!current()||!cameraScreen||cameraEpoch!=epoch)return;
             try{
                 provider=future.get();provider.unbindAll();Preview usePreview=new Preview.Builder().build();usePreview.setSurfaceProvider(preview.getSurfaceProvider());
                 capture=new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).setFlashMode(flash).build();

@@ -94,6 +94,7 @@ class PhotoRequirementEditor {
         [this.value.items[index], this.value.items[other]] = [this.value.items[other], this.value.items[index]];
         this.value.items.forEach((v, n) => v.order = n); this.render(); };
       action('Move up', () => move(-1), row); action('Move down', () => move(1), row);
+      action('Remove item', () => { this.value.items.splice(index, 1); this.value.items.forEach((v, n) => v.order = n); this.render(); }, row);
     });
     action('Add photo item', () => { if (this.value.items.length >= 100) return;
       this.value.items.push({ id: crypto.randomUUID(), label: '', enabled: true, minimum: 1, instruction: '', stage: 'NONE', framing: 'NORMAL', order: this.value.items.length }); this.render(); });

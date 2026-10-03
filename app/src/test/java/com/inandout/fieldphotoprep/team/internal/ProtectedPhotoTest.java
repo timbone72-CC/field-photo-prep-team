@@ -91,4 +91,16 @@ public class ProtectedPhotoTest {
         assertTrue(dao.photo(blocked.id).readable());assertFalse(dao.photo(blocked.id).prepared);assertTrue(new File(blocked.originalPath).exists());
     }
 
+    @Test public void concurrentShutterAndFinishCannotFreezeHalfCapturedBytes() throws Exception {
+        photo(PhotoRequirementsTest.id(2));photo(PhotoRequirementsTest.id(3));photo("");
+        java.util.concurrent.ExecutorService workers=java.util.concurrent.Executors.newFixedThreadPool(2);
+        java.util.concurrent.CountDownLatch start=new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.Future<Boolean> shutter=workers.submit(()->{start.await();try{reservation("");return true;}catch(IllegalStateException e){return false;}});
+        java.util.concurrent.Future<Boolean> finish=workers.submit(()->{start.await();try{dao.createAction(actor,"1","run-1","COMPLETE","2026-10-03T12:01:00Z");return true;}catch(IllegalStateException e){return false;}});
+        start.countDown();boolean captured=shutter.get(10,java.util.concurrent.TimeUnit.SECONDS),frozen=finish.get(10,java.util.concurrent.TimeUnit.SECONDS);workers.shutdownNow();
+        assertNotEquals(captured,frozen);
+        if(frozen)for(ProtectedPhoto p:dao.photos("a","org","1","run-1"))assertFalse(p.finishSetId.isEmpty());
+        else assertEquals(1,dao.photos("a","org","1","run-1").stream().filter(p->"CAPTURING".equals(p.state)).count());
+    }
+
 }
