@@ -695,11 +695,15 @@ Future template/run/lifecycle additions do not retroactively make this existing 
 
 ---
 
-# Phase 3 — Run identity, Room work list, and offline field actions — PHASE 3A MERGED / PHASE 3B PLAN PROPOSED
+# Phase 3 — Run identity, Room work list, and offline field actions — 3A MERGED / WHOLE-PHASE PLAN CONSOLIDATED
 
 ## Goal
 
 Make assigned work reliable with no internet, including restart, while introducing the minimum run identity needed so later reopen/photo behavior cannot overwrite history.
+
+## Whole-phase plan and execution boundary
+
+The linked parent plan defines workflow, identity/authority, failures, dependencies, verification, recovery and completion for every section. PR #30 is the existing authoritative planning line; its historical branch name does not limit plan coverage. This is a consolidation of existing approval, not a new letter-by-letter design cycle. The passed 3A gate is retained. One combined physical session after complete 3B/3C automation proves offline progress/restart, ordered idempotent acceptance, conflict preservation, account isolation and actual background action sync before the remaining runtime merge.
 
 ## 3A — Server run foundation + Room cache
 
@@ -737,7 +741,7 @@ Minimum cached data:
 
 ## 3B — Offline Start/Finish queue
 
-Detailed implementation plan (2026-10-02 America/Chicago): [PHASE_3B_IMPLEMENTATION_PLAN_2026-10-02.md](PHASE_3B_IMPLEMENTATION_PLAN_2026-10-02.md) is **PROPOSED / AWAITING OPERATOR PLAN APPROVAL**. It defines assignment-instance binding, a non-destructive Room migration, durable actions and tap times, run-bound idempotent acceptance, foreground ordered sync, refresh preservation, visible conflicts, rollback and exact automated/phone gates. Its timestamp tolerances, pending-action handoff guard and explicit protection against A → B → A replay are proposed clarifications requiring plan approval. No Phase 3B runtime work is authorized by recording this proposal.
+Whole-phase implementation plan: [PHASE_3_IMPLEMENTATION_PLAN_2026-10-02.md](PHASE_3_IMPLEMENTATION_PLAN_2026-10-02.md) covers **all 3A/3B/3C sections**, preserving merged 3A and its accepted evidence. Authority is the approved 2026-09-14 roadmap plus the detailed 3B proposal approved at 2026-10-02 22:55:40 America/Chicago. Timestamp tolerance, pending-action handoff guard and A → B → A protection remain approved. The consolidated plan fills scheduling/recovery/test details for the already-planned 3C worker without adding product scope. Build remaining 3B/3C together on one runtime line after documentation integration; test the queue before attaching its worker, then run one combined remaining-phase physical gate. No intermediate letter-only plan approval or phone gate is required. Runtime implementation and its Level 3 pre-merge approval remain pending.
 
 Each local field action has its own UUID and stores:
 
@@ -765,7 +769,7 @@ Before Phase 4 exists, Finish validation is only field-state based. After Phase 
 
 ## 3C — Reconciliation + persistent action sync
 
-Introduce WorkManager only after the queue is already correct.
+Introduce WorkManager after focused automated evidence proves the queue correct, within the same remaining-phase batch. Use the linked parent plan's owner-scoped one-time network-constrained scheduling, shared session/sync coordinator, terminal-conflict handling and restart recovery; do not create a separate design approval or queue-only phone gate.
 
 Worker:
 
@@ -795,7 +799,7 @@ If there is no local Start/pending/photo evidence, remove from active list after
 
 Conservative v1 resolution:
 
-- Admin may restore/reassign work back when the local evidence should be accepted; the proposed Phase 3B plan clarifies that a new assignment instance alone does not authorize replay or rebinding of older actions, which remain protected pending an explicit governed resolution;
+- Admin may restore/reassign work back when the local evidence should be accepted; the approved Phase 3B decisions retained in the parent plan clarify that a new assignment instance alone does not authorize replay or rebinding of older actions, which remain protected pending an explicit governed resolution;
 - otherwise protected conflict remains until a later explicitly governed discard/recovery path exists.
 
 ## Session/restart
@@ -825,18 +829,17 @@ At minimum:
 
 ## Physical gate
 
-1. sign in online;
-2. download at least two disposable WOs;
-3. verify receipt;
-4. disable network;
-5. kill/restart;
-6. open cached work;
-7. Start/Finish offline;
-8. restore network;
-9. prove exactly-once ordered server acceptance with truthful event times;
-10. repeat one offline reassignment/cancel race and prove conflict preservation.
+Retain the passed 3A gate. Stage the single combined remaining-phase gate in the linked parent plan after both 3B and 3C pass automated proof:
 
-Completion gate: **multiple assignments, offline Start/Finish, restart, identity isolation, and one race are proven on real Android without manual DB repair.**
+1. update the existing installation and refresh at least two disposable assignments online;
+2. Start/Finish offline and preserve pending progress through force-stop/reopen;
+3. race one protected offline action against authorized Admin reassignment/cancellation;
+4. leave the reopened app normally in the background, restore network, and observe the worker accepting ordered original action identities/times from the laptop before reopening the app;
+5. confirm accepted versus Needs review states, foreground Refresh Assignments without duplicates, and Sign Out/second-account/original-owner isolation.
+
+An Android Force stop suspends background execution until reopen; it is a persistence test, not the background scheduling test. The parent plan defines the diagnostic observation window, blockers and exact evidence. No camera/Drive proof is needed for Phase 3.
+
+Completion gate: **retained 3A proof plus multiple assignments, offline Start/Finish, restart, identity isolation, ordered idempotent convergence, one protected race and actual persistent background action sync are proven on real Android without manual DB repair; required backend/automated evidence, safe recovery, explicit Level 3 merge approval and integration agree.**
 
 ---
 
