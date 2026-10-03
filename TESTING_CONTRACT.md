@@ -152,6 +152,10 @@ Fix the failure, rerun the focused test, then run the final complete suite once 
 
 ## Device-gate staging
 
+The approved numbered parent-phase plan owns the verification schedule for all its lettered sections. For each phone, laptop or provider gate, record the concrete behavior software cannot prove and which subsequent work depends on that observation. A laptop check is selected for its actual workflow boundary, not as an automatic companion to every phone check. Lettered-section, branch/PR and session boundaries alone do not justify another device gate or design approval.
+
+Combine checks that can safely share one staged runtime. More than one device/provider gate inside a phase is justified only by a real evidence dependency or newly observed contradiction, with its reason recorded. Reuse accepted observations; repeat only the affected checks when a changed runtime or failure invalidates their evidence. Required tests, exact-head complete-suite verification and Level 3 pre-merge approval still apply.
+
 Do not fragment development into repeated phone checks. Follow `docs/PHASE_STAGING_DOCTRINE.md`:
 
 **build as far as automated evidence can honestly prove → freeze the tested runtime at the genuine device boundary → run one straight-line device gate → record PASS/BLOCKED/FAIL → continue from that evidence.**
