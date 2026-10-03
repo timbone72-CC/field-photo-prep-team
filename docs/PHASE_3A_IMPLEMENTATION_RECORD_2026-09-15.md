@@ -2,7 +2,7 @@
 
 Date: 2026-09-15
 
-Status: **IMPLEMENTATION IN PROGRESS — LEVEL 3 — DO NOT MERGE WITHOUT EXPLICIT OPERATOR APPROVAL**
+Status: **PHASE 3A DATABASE / AUTOMATED / PHONE GATES PASSED — LEVEL 3 — MERGE APPROVAL PENDING**
 
 Branch: `feat/phase-3a-run-room-foundation`
 
@@ -319,3 +319,26 @@ Before/after advisors distinguish baseline notices from new findings. Existing b
 - Repository next gate: publish these mirrors, fixture regression and records on the existing PR #17; final Android/Admin/governance CI must pass on that exact head. Record the final SHA/results in PR metadata without another runtime edit.
 - Physical result: **PENDING**. After exact-head CI, next is the single Phase 3A phone cache/restart/Sign Out/owner-isolation gate described above. No Phase 3B/3C, phone auto-refresh, camera or Drive behavior is authorized.
 - Merge: **DRAFT / NOT MERGED / explicit operator approval still pending**. Runtime rollback remains current main `778dfc5f67e47157f6b154d5476b26ae427bad55`; preserve applied database history and use a narrow forward repair if a demonstrated defect arises.
+
+
+## Phone gate result — 2026-10-02 America/Chicago — PASS
+
+Goal/scope: record the completed Phase 3A device gate on the existing authoritative branch/PR #17. This checkpoint changes documentation/PR metadata only (Level 1); the parent implementation remains Level 3. No runtime, migration, account, deployment, signer or FPP change.
+
+Tested runtime: `3191dd0ec29ec8e0f29e7d748ed8b8e54bdd6131`, tree `2b0fe78e7c86590e36c1ed24fd3ad7da7d5f2b41`. APK: `Field-Work-Hub-0.3-Phase3A-3191dd0.apk`, SHA-256 `3d2bd5e2c01538e3e3b02ba7280671100e105e1687de345478339836085aa7f4`, from Android CI run `37072465869`, artifact `11255371162` (archive digest checked against GitHub). FWH package `com.inandout.fieldphotoprep.team.internal`; unchanged signer SHA-256 `1bbff192f97a8a24c6f812d77df6847eb9759b3afb3c4b210d9e6c251f4eecfe`. Android full tests/build/schema/identity/signer, Admin run `37072465864`, and governance passed on that runtime. Subsequent checkpoint changes are documentation only; no replacement APK or repeat device gate is required without a runtime change.
+
+Operator-reported physical observations on the same Android phone:
+
+- Update installation/open: **PASS**.
+- Online Contractor sign-in/download with at least two test work orders visible: **PASS**.
+- Online force-stop/reopen: same WOs returned without another sign-in: **PASS**.
+- Airplane mode with Wi-Fi off, force-stop/reopen, downloaded list and WO details accessible without sign-in: **PASS**.
+- Offline Sign Out followed by force-stop/reopen: sign-in screen, no ordinary access to WOs: **PASS**. Physical UI evidence proves the lock; unchanged Room rows/session-only clearing is also covered by automated tests, not claimed from direct on-phone database inspection.
+- Restore internet; second existing Contractor account on the same phone: first account's assignments absent: **PASS**. No new invitation/account was created.
+- Sign Out of the second account, return to original account online: original WOs returned; operator confirmed **Refresh Assignments** is visible and works: **PASS**. Earlier instruction shortened the label to “Refresh”, causing confusion; there is no missing-button defect. Sign-in itself reloads the authorized snapshot.
+
+Read-only FWH receipt check after the phone gate (2026-10-03 UTC): 5 current non-cancelled assigned WOs, 4 with non-null accepted receipt, and all 5 receipt projections consistent across WO/run/current-or-completed assignment. An assigned WO need not be received until downloaded by its owner. Durable-save-before-acknowledgement ordering is proved by the focused repository tests; aggregate provider inspection does not claim per-tap timing evidence.
+
+Evidence is accepted once from the operator's confirmations; no physical test is inferred from CI. Test WO data is retained as the existing disposable assignment baseline, not deleted during this record-only checkpoint. Original FPP, Drive, Auth configuration and accounts are unchanged. Full Phase 3 offline Start/Finish/reconciliation/WorkManager behavior remains unimplemented and unproven.
+
+Next exact gate: final PR/CI review and explicit operator approval before merging PR #17. Current main/runtime rollback remains `778dfc5f67e47157f6b154d5476b26ae427bad55`; preserve additive database history and local evidence. Merge is **NOT APPROVED / NOT MERGED**. No Phase 3B/3C or phone automatic-refresh implementation is authorized by the passing phone gate.
