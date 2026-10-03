@@ -37,6 +37,7 @@ public class ProtectedPhotoTest {
         photo("");FieldAction finish=dao.createAction(actor,"1","run-1","COMPLETE","2026-10-03T12:01:00Z");
         assertEquals(3,new JSONArray(finish.finishPhotosJson).length());assertFalse(finish.finishSetId.isEmpty());
         for(ProtectedPhoto p:dao.photos("a","org","1","run-1"))assertEquals(finish.finishSetId,p.finishSetId);
+        dao.photoPrepared(a.id,true,"");assertEquals(finish.finishSetId,dao.photo(a.id).finishSetId);
         assertEquals(finish.actionId,dao.createAction(actor,"1","run-1","COMPLETE","2026-10-03T12:02:00Z").actionId);
         assertThrows(IllegalStateException.class,()->reservation(""));assertThrows(IllegalStateException.class,()->dao.beginDiscard(actor,a.id));owner.ensureFrozenReadable(finish);
     }

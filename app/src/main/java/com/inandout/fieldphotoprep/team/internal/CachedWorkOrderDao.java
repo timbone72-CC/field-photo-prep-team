@@ -230,7 +230,18 @@ abstract class CachedWorkOrderDao {
     @Query("SELECT * FROM protected_photos ORDER BY id") abstract List<ProtectedPhoto> allPhotos();
     @Query("SELECT * FROM protected_photos WHERE id=:id") abstract ProtectedPhoto photo(String id);
     @Insert(onConflict=OnConflictStrategy.ABORT) abstract void insertPhoto(ProtectedPhoto p);
-    @androidx.room.Update abstract void updatePhoto(ProtectedPhoto p);
+    @Query("UPDATE protected_photos SET state=:state,originalBytes=:bytes,problem=:problem WHERE id=:id AND state='CAPTURING'")
+    abstract void publishCapture(String id,String state,long bytes,String problem);
+    @Query("UPDATE protected_photos SET prepared=:prepared,problem=:problem WHERE id=:id AND state='WAITING'")
+    abstract void photoPrepared(String id,boolean prepared,String problem);
+    @Query("UPDATE protected_photos SET state='PROBLEM',problem=:problem WHERE id=:id AND state IN ('WAITING','CAPTURING')")
+    abstract void photoProblem(String id,String problem);
+    @Query("UPDATE protected_photos SET state='DISCARDING' WHERE id=:id AND finishSetId=''")
+    abstract void discardPhoto(String id);
+    @Query("UPDATE protected_photos SET state='DISCARDED',prepared=0,problem='' WHERE id=:id AND state='DISCARDING'")
+    abstract void completeDiscard(String id);
+    @Query("UPDATE protected_photos SET finishSetId=:setId WHERE id=:id AND finishSetId=''")
+    abstract void freezePhoto(String id,String setId);
 
     private CachedWorkOrder captureRun(SupabaseApi.AuthSession session, String wo, String run) {
         CachedWorkOrder r=find(session.userId,session.organizationId,wo,run);
@@ -266,7 +277,7 @@ abstract class CachedWorkOrderDao {
     @Transaction
     void finalizePhoto(String id, boolean valid, long bytes, String problem) {
         ProtectedPhoto p=photo(id); if(p==null || !"CAPTURING".equals(p.state)) return;
-        p.originalBytes=bytes; p.state=valid?"WAITING":(bytes==0?"DISCARDED":"PROBLEM"); p.problem=problem; updatePhoto(p);
+        publishCapture(id,valid?"WAITING":(bytes==0?"DISCARDED":"PROBLEM"),bytes,problem);
     }
 
     @Transaction
@@ -275,7 +286,7 @@ abstract class CachedWorkOrderDao {
         if(p==null || !p.ownerId.equals(session.userId)||!p.organizationId.equals(session.organizationId)) throw new IllegalStateException("Photo unavailable.");
         captureRun(session,p.workOrderId,p.runId);
         if(!p.finishSetId.isEmpty()||"CAPTURING".equals(p.state)||"DISCARDED".equals(p.state)) throw new IllegalStateException("Photo cannot be discarded.");
-        p.state="DISCARDING"; updatePhoto(p); return p;
+        discardPhoto(p.id); p.state="DISCARDING"; return p;
     }
 
     private void freezePhotos(CachedWorkOrder r, PhotoRequirements req, FieldAction a) {
@@ -293,7 +304,7 @@ abstract class CachedWorkOrderDao {
         a.finishSetId=java.util.UUID.randomUUID().toString(); org.json.JSONArray set=new org.json.JSONArray();
         try { for(ProtectedPhoto p:valid) {
             set.put(new org.json.JSONObject().put("id",p.id).put("item_id",p.itemId.isEmpty()?org.json.JSONObject.NULL:p.itemId).put("captured_at",p.capturedAt));
-            p.finishSetId=a.finishSetId; updatePhoto(p);
+            freezePhoto(p.id,a.finishSetId);
         } } catch(org.json.JSONException e) { throw new IllegalStateException(e); }
         a.finishPhotosJson=set.toString();
         a.finishDigest=PhotoOwner.digest(a.finishPhotosJson);

@@ -45,7 +45,7 @@ final class PhotoOwner {
             else if("DISCARDING".equals(p.state)) finishDiscard(p);
             else if("WAITING".equals(p.state)) {
                 if(!p.readable()||!validImage(new File(p.originalPath))) {
-                    p.state="PROBLEM";p.problem="Protected original is missing or unreadable. Contact Admin.";dao.updatePhoto(p);
+                    dao.photoProblem(p.id,"Protected original is missing or unreadable. Contact Admin.");
                 } else if(!p.prepared||!validImage(new File(p.preparedPath))) prepare(p);
             }
         }
@@ -58,7 +58,7 @@ final class PhotoOwner {
         // Intent was confirmed and committed before either file is touched. Retry after a crash is safe.
         File original=new File(p.originalPath), prepared=new File(p.preparedPath), temp=new File(p.preparedPath+".tmp");
         boolean removed=(!original.exists()||original.delete())&&(!prepared.exists()||prepared.delete())&&(!temp.exists()||temp.delete());
-        if(removed) { p.state="DISCARDED";p.problem="";p.prepared=false;dao.updatePhoto(p); }
+        if(removed) dao.completeDiscard(p.id);
     }
     static String digest(String value) {
         try {
@@ -78,7 +78,7 @@ final class PhotoOwner {
                         ||!p.runId.equals(a.runId)||!p.assignmentInstanceId.equals(a.assignmentInstanceId)
                         ||!p.requirementRevision.equals(a.requirementRevision)||!p.readable())
                 {
-                    if(p!=null) { p.state="PROBLEM";p.problem="Protected original needs recovery. Contact Admin.";dao.updatePhoto(p); }
+                    if(p!=null) dao.photoProblem(p.id,"Protected original needs recovery. Contact Admin.");
                     dao.markRunConflict(a.ownerId,a.organizationId,a.workOrderId,a.runId,"PHOTO_RECOVERY_REQUIRED");
                     throw new IOException("Frozen originals need recovery; metadata submission paused.");
                 }
@@ -89,9 +89,6 @@ final class PhotoOwner {
         if(initial==null||!initial.readable()) return;
         File temp=new File(initial.preparedPath+".tmp"); Bitmap decoded=null, oriented=null, scaled=null;
         try {
-            try(RandomAccessFile jpeg=new RandomAccessFile(f,"r")) {
-                if(jpeg.length()<4)return false;jpeg.seek(jpeg.length()-2);if(jpeg.readUnsignedShort()!=0xffd9)return false;
-            }
             BitmapFactory.Options bounds=new BitmapFactory.Options();bounds.inJustDecodeBounds=true;
             BitmapFactory.decodeFile(initial.originalPath,bounds);
             BitmapFactory.Options options=new BitmapFactory.Options();
@@ -119,10 +116,10 @@ final class PhotoOwner {
             if(!validImage(temp)) throw new IOException("Prepared copy unreadable");
             Files.move(temp.toPath(),new File(initial.preparedPath).toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);
             ProtectedPhoto current=dao.photo(initial.id);
-            if(current!=null&&"WAITING".equals(current.state)) { current.prepared=true;current.problem="";dao.updatePhoto(current); }
+            if(current!=null) dao.photoPrepared(current.id,true,"");
         } catch(Exception e) {
             ProtectedPhoto current=dao.photo(initial.id);
-            if(current!=null&&"WAITING".equals(current.state)) { current.prepared=false;current.problem="Preparation pending; original protected.";dao.updatePhoto(current); }
+            if(current!=null) dao.photoPrepared(current.id,false,"Preparation pending; original protected.");
         } finally {
             if(temp.exists()) temp.delete();
             Set<Bitmap> images=new HashSet<>(Arrays.asList(decoded,oriented,scaled));for(Bitmap b:images) if(b!=null)b.recycle();
@@ -131,6 +128,9 @@ final class PhotoOwner {
     static boolean validImage(File f) {
         if(!f.isFile()||!f.canRead()||f.length()==0) return false;
         try {
+            try(RandomAccessFile jpeg=new RandomAccessFile(f,"r")) {
+                if(jpeg.length()<4)return false;jpeg.seek(jpeg.length()-2);if(jpeg.readUnsignedShort()!=0xffd9)return false;
+            }
             BitmapFactory.Options bounds=new BitmapFactory.Options();bounds.inJustDecodeBounds=true;BitmapFactory.decodeFile(f.getAbsolutePath(),bounds);
             if(bounds.outWidth<=0||bounds.outHeight<=0) return false;
             BitmapFactory.Options options=new BitmapFactory.Options();options.inSampleSize=1;
