@@ -243,7 +243,7 @@ If a reusable template has already been used, remove it from future selection by
 
 Whole-phase plan: [PHASE_4_IMPLEMENTATION_PLAN_2026-10-03.md](PHASE_4_IMPLEMENTATION_PLAN_2026-10-03.md). The operator approved the discussed Admin-configurable photo-item workflow and continuation on **2026-10-03 at 15:00:44 America/Chicago**. This deliberately replaces the earlier numeric-only shape, overlapping Stage/Wide credit and named-item exclusion.
 
-A run snapshot contains an independently enabled **Total** minimum and a flat ordered list of photo items. Each item has a stable UUID, name, enable checkbox, minimum and optional short instruction; stage/framing context can describe that item's capture. Admin can choose reusable defaults, change every on/off/count for one WO, add a custom item and put items in walking order before Start. Template edits/rename/archive never rewrite existing run snapshots.
+A run snapshot contains an independently enabled **Total** minimum and a flat ordered list of photo items. Each item has a stable UUID, name, enable checkbox, minimum and optional short instruction; stage/framing context can describe that item's capture. Admin can choose reusable defaults, change every on/off/count for one WO, add a custom item and put items in a suggested walking order before Start. Inspectors may follow it or choose any item next; sequence never blocks capture or Finish. This optional-order clarification was requested on 2026-10-03 at 15:15:52 America/Chicago. Template edits/rename/archive never rewrite existing run snapshots.
 
 Rules:
 
@@ -860,7 +860,7 @@ Use the approved narrow photo list, with one-item-only credit. No general checkl
 
 `Open downloaded run → read requirements → Start Work → photo list → tap item → Take → Take → Take → Done → next item → Finish Field Work`
 
-The selected item remains active across shots. Show its optional instruction and count. Extra photos covers inspector-selected additional views. Total-only/all-off jobs use simple capture without an empty forced list or stage selector.
+The selected item remains active across shots. Admin's walking order is optional: the inspector can select any item, switch away from an unfinished item and revisit items. Show its optional instruction and count. Extra photos covers inspector-selected additional views. Total-only/all-off jobs use simple capture without an empty forced list or stage selector.
 
 Requirements:
 
