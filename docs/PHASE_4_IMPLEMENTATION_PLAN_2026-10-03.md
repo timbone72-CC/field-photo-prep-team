@@ -1,6 +1,8 @@
 # Field Work Hub — Phase 4 Implementation Plan — 2026-10-03
 
-Status: **APPROVED SCOPE — WHOLE-PHASE PLAN RECORDED; RUNTIME NOT STARTED**
+Status: **APPROVED SCOPE — RUNTIME IMPLEMENTED; AUTOMATED/BACKEND/ARTIFACT PASS; ADMIN STAGING AND DEVICE GATE PENDING**
+
+Current runtime evidence and staging authority: [PHASE_4_IMPLEMENTATION_RECORD_2026-10-03.md](PHASE_4_IMPLEMENTATION_RECORD_2026-10-03.md). Original planning classification/history below remains historical.
 
 Plan ID: `phase-4-implementation-plan`.
 
@@ -185,7 +187,7 @@ PASS: configured and simple/all-off behavior works, repeated capture remains qui
 
 Phase 4 completes only when the whole approved behavior, focused/final exact-head automation, deployed migration/grant/advisor parity, verified recovery, combined physical gate, explicit Level 3 merge approval and runtime integration agree. Keep photos **WAITING / delivery pending** for Phase 5; no claim of remote delivery/cleanup. Phase 5 consumes the same UUID/item/revision/frozen-set facts and adds company-authorized bytes/destination/retry, preserving this counting rule. Future Phase 6 derives Total/item counts from server-known facts, never phone-only guesses.
 
-Current status: **planning scope approved and recorded; runtime/backend/APK/device gates PENDING**. No Phase 4 implementation/deployment is claimed. Next exact checkpoint: integrate this documentation plan after its required checks, then create the single Phase 4 runtime branch/implementation record and implement 4A–4E within this plan. No new letter-level plan approval; stop only for material new decisions, failed evidence, the genuine device boundary or separate explicit Level 3 pre-merge approval.
+Current status: **runtime/backend/candidate/recovery automation PASS; Admin publication, combined physical gate, explicit Level 3 merge approval and runtime integration PENDING**. Exact tested runtime and evidence are in the implementation record. Next exact checkpoint: stage its verified Admin page and APKs, then execute the one grouped laptop/phone gate. No new letter-level plan approval; stop only for material new decisions, failed evidence, the genuine device boundary or separate explicit Level 3 pre-merge approval.
 
 ## Operator clarification — optional walking order — 2026-10-03 15:15 America/Chicago
 
