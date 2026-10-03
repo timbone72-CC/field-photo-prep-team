@@ -15,7 +15,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-final class SupabaseApi implements AssignmentRepository.Remote {
+final class SupabaseApi
+        implements AssignmentRepository.Remote,
+                SessionCoordinator.Remote,
+                ActionSyncCoordinator.Remote {
     private static final int CONNECT_TIMEOUT_MS = 15_000;
     private static final int READ_TIMEOUT_MS = 20_000;
 
@@ -65,6 +68,10 @@ final class SupabaseApi implements AssignmentRepository.Remote {
         final String fieldCompletedAt;
         final String serverUpdatedAt;
 
+        String assignmentInstanceId = "";
+        String conflictReason = "";
+        String pendingKind = "";
+
         WorkOrder(
                 String id,
                 String organizationId,
@@ -103,14 +110,17 @@ final class SupabaseApi implements AssignmentRepository.Remote {
         }
     }
 
-    AuthSession signIn(String email, String password) throws IOException, JSONException, ApiException {
+    AuthSession signIn(String email, String password)
+            throws IOException, JSONException, ApiException {
         JSONObject request = new JSONObject();
         request.put("email", email);
         request.put("password", password);
         return tokenRequest("password", request, email);
     }
 
-    AuthSession refreshSession(String refreshToken) throws IOException, JSONException, ApiException {
+    @Override
+    public AuthSession refreshSession(String refreshToken)
+            throws IOException, JSONException, ApiException {
         if (refreshToken == null || refreshToken.trim().isEmpty()) {
             throw new ApiException(401, "No reusable Team session is available.");
         }
@@ -150,15 +160,12 @@ final class SupabaseApi implements AssignmentRepository.Remote {
         String signedInEmail = user.optString("email", fallbackEmail);
         JSONObject appMetadata = user.optJSONObject("app_metadata");
         String role = appMetadata == null ? "" : appMetadata.optString("role", "");
-        String organizationId = appMetadata == null
-                ? ""
-                : appMetadata.optString("organization_id", "");
+        String organizationId =
+                appMetadata == null ? "" : appMetadata.optString("organization_id", "");
         long expiresAt = response.optLong("expires_at", 0L);
         if (expiresAt <= 0L) {
             long expiresIn = response.optLong("expires_in", 0L);
-            expiresAt = expiresIn <= 0L
-                    ? 0L
-                    : (System.currentTimeMillis() / 1000L) + expiresIn;
+            expiresAt = expiresIn <= 0L ? 0L : (System.currentTimeMillis() / 1000L) + expiresIn;
         }
 
         if (userId.isEmpty() || role.isEmpty() || organizationId.isEmpty()) {
@@ -166,55 +173,39 @@ final class SupabaseApi implements AssignmentRepository.Remote {
         }
 
         return new AuthSession(
-                accessToken,
-                refreshToken,
-                userId,
-                signedInEmail,
-                role,
-                organizationId,
-                expiresAt);
+                accessToken, refreshToken, userId, signedInEmail, role, organizationId, expiresAt);
     }
 
     @Override
     public List<WorkOrder> fetchWorkOrders(String accessToken)
             throws IOException, JSONException, ApiException {
-        String query = "/rest/v1/work_orders"
-                + "?select=id,organization_id,current_run_id,current_run_sequence,wo_number,property_address,work_type,instructions,due_date,field_status,assigned_user_id,pending_assignee_user_id,reassignment_requested_at,assignment_received_at,started_at,field_completed_at,updated_at"
-                + "&order=due_date.asc,wo_number.asc";
-        URL url = new URL(SupabaseConfig.PROJECT_URL + query);
-        HttpURLConnection connection = open(url);
-        connection.setRequestMethod("GET");
-        addAuthHeaders(connection, accessToken);
-
-        int status = connection.getResponseCode();
-        String body = readBody(connection, status);
-        connection.disconnect();
-        if (status < 200 || status >= 300) {
-            throw new ApiException(status, extractErrorMessage(status, body));
-        }
+        String body = postRpc(accessToken, "field_assignments", new JSONObject());
 
         JSONArray rows = new JSONArray(body);
         List<WorkOrder> workOrders = new ArrayList<>();
         for (int i = 0; i < rows.length(); i++) {
             JSONObject row = rows.getJSONObject(i);
-            workOrders.add(new WorkOrder(
-                    row.getString("id"),
-                    row.optString("organization_id", ""),
-                    nullableString(row, "current_run_id"),
-                    row.optInt("current_run_sequence", 0),
-                    row.optString("wo_number", ""),
-                    row.optString("property_address", ""),
-                    row.optString("work_type", ""),
-                    nullableString(row, "instructions"),
-                    row.optString("due_date", ""),
-                    row.optString("field_status", ""),
-                    nullableString(row, "assigned_user_id"),
-                    nullableString(row, "pending_assignee_user_id"),
-                    nullableString(row, "reassignment_requested_at"),
-                    nullableString(row, "assignment_received_at"),
-                    nullableString(row, "started_at"),
-                    nullableString(row, "field_completed_at"),
-                    nullableString(row, "updated_at")));
+            WorkOrder workOrder =
+                    new WorkOrder(
+                            row.getString("id"),
+                            row.optString("organization_id", ""),
+                            nullableString(row, "current_run_id"),
+                            row.optInt("current_run_sequence", 0),
+                            row.optString("wo_number", ""),
+                            row.optString("property_address", ""),
+                            row.optString("work_type", ""),
+                            nullableString(row, "instructions"),
+                            row.optString("due_date", ""),
+                            row.optString("field_status", ""),
+                            nullableString(row, "assigned_user_id"),
+                            nullableString(row, "pending_assignee_user_id"),
+                            nullableString(row, "reassignment_requested_at"),
+                            nullableString(row, "assignment_received_at"),
+                            nullableString(row, "started_at"),
+                            nullableString(row, "field_completed_at"),
+                            nullableString(row, "updated_at"));
+            workOrder.assignmentInstanceId = nullableString(row, "assignment_instance_id");
+            workOrders.add(workOrder);
         }
         return workOrders;
     }
@@ -235,7 +226,19 @@ final class SupabaseApi implements AssignmentRepository.Remote {
         postRpc(accessToken, "respond_reassignment", request);
     }
 
-    private void postRpc(String accessToken, String functionName, JSONObject request)
+    @Override
+    public FieldActionResult submit(String accessToken, FieldAction action) throws Exception {
+        JSONObject request = new JSONObject();
+        request.put("p_action_id", action.actionId);
+        request.put("p_work_order_id", action.workOrderId);
+        request.put("p_run_id", action.runId);
+        request.put("p_assignment_instance_id", action.assignmentInstanceId);
+        request.put("p_action_kind", action.kind);
+        request.put("p_event_time", action.eventTime);
+        return new FieldActionResult(action, postRpc(accessToken, "accept_field_action", request));
+    }
+
+    private String postRpc(String accessToken, String functionName, JSONObject request)
             throws IOException, ApiException {
         URL url = new URL(SupabaseConfig.PROJECT_URL + "/rest/v1/rpc/" + functionName);
         HttpURLConnection connection = open(url);
@@ -243,6 +246,8 @@ final class SupabaseApi implements AssignmentRepository.Remote {
         connection.setDoOutput(true);
         addAuthHeaders(connection, accessToken);
         connection.setRequestProperty("Content-Type", "application/json");
+        boolean snapshot = "field_assignments".equals(functionName);
+        if (snapshot) connection.setRequestProperty("Prefer", "count=exact");
         byte[] payload = request.toString().getBytes(StandardCharsets.UTF_8);
         connection.setFixedLengthStreamingMode(payload.length);
         try (OutputStream output = connection.getOutputStream()) {
@@ -251,9 +256,49 @@ final class SupabaseApi implements AssignmentRepository.Remote {
 
         int status = connection.getResponseCode();
         String body = readBody(connection, status);
+        String contentRange = connection.getHeaderField("Content-Range");
+        long retryAfter = retryDelay(connection.getHeaderField("Retry-After"));
         connection.disconnect();
         if (status < 200 || status >= 300) {
-            throw new ApiException(status, extractErrorMessage(status, body));
+            throw new ApiException(status, extractErrorMessage(status, body), retryAfter);
+        }
+        if (snapshot) validateCompleteSnapshot(body, contentRange);
+        return body;
+    }
+
+    static long retryDelay(String header) {
+        if (header == null) return 0;
+        try {
+            return Math.max(0, Long.parseLong(header.trim())) * 1000;
+        } catch (Exception ignored) {
+            try {
+                return Math.max(
+                        0,
+                        java.time.ZonedDateTime.parse(
+                                                header,
+                                                java.time.format.DateTimeFormatter
+                                                        .RFC_1123_DATE_TIME)
+                                        .toInstant()
+                                        .toEpochMilli()
+                                - System.currentTimeMillis());
+            } catch (Exception invalid) {
+                return 0;
+            }
+        }
+    }
+
+    static void validateCompleteSnapshot(String body, String contentRange) throws IOException {
+        try {
+            int received = new JSONArray(body).length();
+            if (contentRange == null || !contentRange.contains("/"))
+                throw new IllegalStateException();
+            String[] parts = contentRange.split("/", -1);
+            long total = Long.parseLong(parts[1]);
+            if (total != received) throw new IllegalStateException();
+            if (received > 0 && !parts[0].equals("0-" + (received - 1)))
+                throw new IllegalStateException();
+        } catch (Exception error) {
+            throw new IOException("Assignment download was incomplete. Saved work is preserved.");
         }
     }
 
@@ -276,15 +321,16 @@ final class SupabaseApi implements AssignmentRepository.Remote {
     }
 
     private static String readBody(HttpURLConnection connection, int status) throws IOException {
-        InputStream stream = status >= 200 && status < 400
-                ? connection.getInputStream()
-                : connection.getErrorStream();
+        InputStream stream =
+                status >= 200 && status < 400
+                        ? connection.getInputStream()
+                        : connection.getErrorStream();
         if (stream == null) {
             return "";
         }
         StringBuilder result = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+        try (BufferedReader reader =
+                new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 result.append(line);
@@ -313,10 +359,16 @@ final class SupabaseApi implements AssignmentRepository.Remote {
 
     static final class ApiException extends Exception {
         final int statusCode;
+        final long retryAfterMs;
 
         ApiException(int statusCode, String message) {
+            this(statusCode, message, 0);
+        }
+
+        ApiException(int statusCode, String message, long retryAfterMs) {
             super(message);
             this.statusCode = statusCode;
+            this.retryAfterMs = retryAfterMs;
         }
 
         boolean isAuthenticationRejection() {

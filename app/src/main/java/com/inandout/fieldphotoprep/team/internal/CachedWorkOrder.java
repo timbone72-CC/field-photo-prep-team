@@ -9,9 +9,9 @@ import androidx.room.Index;
         tableName = "cached_work_orders",
         primaryKeys = {"cache_owner_user_id", "work_order_id", "run_id"},
         indices = {
-                @Index(value = {"cache_owner_user_id", "organization_id"}),
-                @Index(value = {"assigned_user_id"}),
-                @Index(value = {"due_date"})
+            @Index(value = {"cache_owner_user_id", "organization_id"}),
+            @Index(value = {"assigned_user_id"}),
+            @Index(value = {"due_date"})
         })
 final class CachedWorkOrder {
     @NonNull
@@ -95,6 +95,14 @@ final class CachedWorkOrder {
 
     @ColumnInfo(name = "last_successful_sync_epoch_ms")
     final long lastSuccessfulSyncEpochMs;
+
+    @NonNull
+    @ColumnInfo(name = "assignment_instance_id", defaultValue = "''")
+    public String assignmentInstanceId = "";
+
+    @NonNull
+    @ColumnInfo(name = "conflict_reason", defaultValue = "''")
+    public String conflictReason = "";
 
     CachedWorkOrder(
             @NonNull String cacheOwnerUserId,

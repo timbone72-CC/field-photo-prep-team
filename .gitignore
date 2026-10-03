@@ -7,3 +7,9 @@
 .externalNativeBuild/
 .cxx/
 app/build/
+
+supabase/.temp/
+
+__pycache__/
+
+phase3-artifacts/

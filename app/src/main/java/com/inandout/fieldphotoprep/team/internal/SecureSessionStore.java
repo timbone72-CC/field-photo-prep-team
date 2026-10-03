@@ -35,8 +35,9 @@ final class SecureSessionStore {
     }
 
     SecureSessionStore(Context context, Crypto crypto) {
-        this.preferences = context.getApplicationContext()
-                .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
+        this.preferences =
+                context.getApplicationContext()
+                        .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
         this.crypto = crypto;
     }
 
@@ -79,26 +80,31 @@ final class SecureSessionStore {
             String organizationId = json.getString("organization_id");
             long expiresAt = json.optLong("expires_at", 0L);
 
-            if (refreshToken.isEmpty() || userId.isEmpty() || role.isEmpty() || organizationId.isEmpty()) {
+            if (refreshToken.isEmpty()
+                    || userId.isEmpty()
+                    || role.isEmpty()
+                    || organizationId.isEmpty()) {
                 throw new IllegalStateException("Stored session identity is incomplete.");
             }
 
             return new SupabaseApi.AuthSession(
-                    accessToken,
-                    refreshToken,
-                    userId,
-                    email,
-                    role,
-                    organizationId,
-                    expiresAt);
+                    accessToken, refreshToken, userId, email, role, organizationId, expiresAt);
         } catch (Exception error) {
             clear();
             return null;
         }
     }
 
+    long generation() {
+        return preferences.getLong("session_generation", 0L);
+    }
+
     void clear() {
-        preferences.edit().remove(SESSION_BLOB_KEY).commit();
+        if (!preferences
+                .edit()
+                .remove(SESSION_BLOB_KEY)
+                .putLong("session_generation", generation() + 1)
+                .commit()) throw new IllegalStateException("Unable to lock the saved session.");
     }
 
     private static final class AndroidKeystoreCrypto implements Crypto {
@@ -146,16 +152,16 @@ final class SecureSessionStore {
                 return existing;
             }
 
-            KeyGenerator generator = KeyGenerator.getInstance(
-                    KeyProperties.KEY_ALGORITHM_AES,
-                    "AndroidKeyStore");
-            generator.init(new KeyGenParameterSpec.Builder(
-                    KEY_ALIAS,
-                    KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
-                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                    .setRandomizedEncryptionRequired(true)
-                    .build());
+            KeyGenerator generator =
+                    KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+            generator.init(
+                    new KeyGenParameterSpec.Builder(
+                                    KEY_ALIAS,
+                                    KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                            .setRandomizedEncryptionRequired(true)
+                            .build());
             return generator.generateKey();
         }
     }

@@ -1,0 +1,41 @@
+name: Phase 3 Database Gate CI
+on:
+  pull_request:
+  push:
+    branches: [main, 'feat/**', 'fix/**']
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_PASSWORD: fwh-disposable-ci
+          POSTGRES_DB: fwh_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      FWH_TEST_DATABASE_URL: postgresql://postgres:fwh-disposable-ci@localhost:5432/fwh_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Prepare disposable controlled Auth context
+        run: psql "$FWH_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/supabase/local_auth_context.sql
+      - name: Apply every authoritative migration in order
+        shell: bash
+        run: |
+          set -euo pipefail
+          for migration in supabase/migrations/*.sql; do
+            psql "$FWH_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -f "$migration"
+          done
+          psql "$FWH_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/supabase/local_test_actors.sql
+      - name: Run controlled authority, replay and projection gates
+        run: |
+          psql "$FWH_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/supabase/phase_3a_database_gate.sql
+          psql "$FWH_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/supabase/phase_3_actions_gate.sql
+      - name: Verify real two-connection mutation races
+        run: |
+          python3 -m pip install 'psycopg[binary]==3.2.10'
+          python3 tests/supabase/phase_3_lock_races.py
