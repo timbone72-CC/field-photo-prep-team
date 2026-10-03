@@ -695,13 +695,15 @@ Future template/run/lifecycle additions do not retroactively make this existing 
 
 ---
 
-# Phase 3 — Run identity, Room work list, and offline field actions — PLANNED; NOT AUTHORIZED
+# Phase 3 — Run identity, Room work list, and offline field actions — PHASE 3A VERIFIED / MERGE APPROVED
 
 ## Goal
 
 Make assigned work reliable with no internet, including restart, while introducing the minimum run identity needed so later reopen/photo behavior cannot overwrite history.
 
 ## 3A — Server run foundation + Room cache
+
+Resume status (2026-10-02 America/Chicago): PR #17 is reconciled with current FWH main. Applied database migrations, controlled RLS/RPC and preservation/advisor checks, complete CI and the single phone gate passed on runtime `3191dd0ec29ec8e0f29e7d748ed8b8e54bdd6131`. The operator confirmed online restart, offline downloaded work after force-stop/restart, Sign Out lock, second-account isolation and return/refresh convergence. Final PR review passed and the operator explicitly approved merging PR #17 at 22:33 America/Chicago. The recorded internal APK remains the phone-tested runtime; PR #17 records the authoritative integration result. Phase 3A completion gates are passed; subsequent runtime work starts only after integration and its own plan gate. See `docs/PHASE_3A_IMPLEMENTATION_RECORD_2026-09-15.md` for evidence and artifact identity. Full Phase 3 is not complete: Phase 3B/3C and phone automatic refresh remain outside this scope.
 
 Before the Android offline model depends on it:
 
