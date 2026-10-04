@@ -123,3 +123,12 @@ The operator installed the verified v8 candidate update and reported: “It work
 Tested candidate identity: runtime **728996b125279eabb59bd05ff3db8617685e3f40**, candidate v8, APK SHA-256 **24ad6088942e759c44810fbd0359dd3b52aeaef0a199bb8b291e20dd8467bf01**, package `com.inandout.fieldphotoprep.team.internal`, signer SHA-256 **1bbff192f97a8a24c6f812d77df6847eb9759b3afb3c4b210d9e6c251f4eecfe**, Room v3. Android candidate and recovery identity checks passed; Android CI runs **37164011954** and **37164009325**, governance **37164010775**, Admin **37164011961**, and DB **37164011959** passed on the exact runtime head. Recovery v9 remains retained and was not installed.
 
 The combined phone gate, explicit Level 3 merge approval and runtime integration remain **PENDING**. Continue the documented grouped gate using the existing synthetic Phase 4 work orders and safe test subjects; preserve app data and do not install recovery unless a blocker requires it. No Phase 5 delivery or cleanup is claimed.
+
+
+## Accepted two-orientation camera capture check — 2026-10-03 19:30 America/Chicago
+
+Using the retained v8 candidate and the synthetic Phase 4 Back item, the operator reported Works after each requested capture:
+- Upright capture: selected item remained Back and its counter advanced from 0/2 to 1/2.
+- Sideways capture of the same safe test area: Back counter advanced to 2/2.
+
+This passes the visible multi-shot/orientation counter check. It does not by itself verify original/derivative bytes on disk, survival through process restart, offline Finish, actual optical ultra-wide selection, flash firing or torch illumination. Those checks remain pending in the combined phone gate. The synthetic evidence remains disposable; no customer photos or Phase 5 delivery are involved.
