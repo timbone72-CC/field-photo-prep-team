@@ -143,3 +143,15 @@ The screenshot and code indicate the wide physical camera's CameraInfo reports n
 The always-on Ready sentence is removed. Admin-authored item instructions remain visible, without an overlapping status overlay. The item heading becomes a dropdown listing enabled photo items with their current counts plus Extra photos, allowing the operator to select the next item without forced walking order.
 
 Candidate/recovery identity is raised to v10/v11 because v8 is installed and v9 remains the retained recovery. Runtime head **7183ec4d3423d975885efd97f9ce586222fe4854** contains the camera/UI fix and version identity update. Exact-head Android/Admin/database CI, new artifact identity verification and the corrected physical control/layout check are pending. Preserve installed app data; do not install v9 or use the intermediate v8/v9 rebuild.
+
+
+## Corrected camera candidate and recovery verified — 2026-10-03 19:40 America/Chicago
+
+Exact PR head **659af707960e655bed44e1aef0c98ae3393df6e8** contains the corrected camera source, v10/v11 identity rules, and this record-only status update. Runtime code is the camera fix committed at `7183ec4d3423d975885efd97f9ce586222fe4854`; no runtime changes followed it. Android run **37166103276**, Admin **37166103299**, and database **37166103260** all PASS on the exact recorded head. Android focused and complete tests passed; candidate and recovery APKs built; CI identity verification passed for package, signer, Room v3, sync flags and version codes. Independently downloaded APK SHA-256 values match their identity records.
+
+- Candidate v10: `Field-Work-Hub-0.4-Phase4-candidate-659af70.apk`, **7,957,671 bytes**, SHA-256 **b0fd86da7840d124026cde364600852bb4c6a83252111c5e94848de72d2deaec**; artifact **11288908531**.
+- Read-only recovery v11: `Field-Work-Hub-0.4-Phase4-recovery-659af70.apk`, **7,941,295 bytes**, SHA-256 **9796727048cb096e1bddfe37f9fd30e4524009cbc3e55718ef46a68ea3ad89a3**; artifact **11288689405**.
+
+Both retain package `com.inandout.fieldphotoprep.team.internal`, signer SHA-256 **1bbff192f97a8a24c6f812d77df6847eb9759b3afb3c4b210d9e6c251f4eecfe**, and Room v3. Candidate sync is enabled; recovery sync is disabled. Runtime rollback remains the verified read-only recovery path; do not downgrade or clear app data.
+
+The v10 phone control/layout retest is still pending. It must verify the required-item dropdown and current counts, no portrait overlap, Flash cycling, Torch on/off and the announced 1× fallback when wide physical-camera flash is unavailable. The remaining Phase 4 offline, restart, Finish, account-isolation and conflict observations remain pending. Level 3 approval is still pending; no merge or deployment occurred.
