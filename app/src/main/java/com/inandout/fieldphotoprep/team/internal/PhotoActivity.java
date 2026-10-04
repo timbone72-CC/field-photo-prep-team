@@ -18,6 +18,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -59,8 +60,8 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
     private ImageCapture capture;
     private PreviewView previewView;
     private FrameLayout cameraRoot;
-    private TextView cameraStatus, zoomText;
-    private Button shutter, done, flashButton, torchButton, wideButton, oneXButton, threeXButton;
+    private TextView cameraStatus, cameraInstruction, zoomText;
+    private Button shutter, done, flashButton, torchButton, wideButton, oneXButton, threeXButton, itemPicker;
     private LinearLayout zoomSliderPanel;
     private SeekBar zoomSlider;
     private ScaleGestureDetector zoomGestureDetector;
@@ -69,11 +70,13 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
     private float physicalWideRatio = 1f;
     private float logicalWideRatio = 1f;
     private boolean logicalWideAvailable;
+    private boolean defaultRearHasFlash;
     private boolean physicalWideSuppressed;
     private boolean activePhysicalWide;
     private float activeIntrinsicRatio = 1f;
     private boolean threeXAvailable;
     private boolean busy, cameraScreen, torch, updatingZoomSlider, zoomSliderTracking;
+    private final Runnable clearCameraStatusRunnable = () -> { if (cameraStatus != null) cameraStatus.setVisibility(View.GONE); };
     private long cameraEpoch;
     private int flash = ImageCapture.FLASH_MODE_AUTO;
     private PhotoRequirements requirements;
@@ -138,7 +141,8 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
             cameraPreview.setTargetRotation(getWindowManager().getDefaultDisplay().getRotation());
         }
         if (capture != null) capture.setTargetRotation(getWindowManager().getDefaultDisplay().getRotation());
-        if (camera != null) cameraStatus.setText("Ready. Take a photo or choose another view.");
+        if (camera != null) showCameraStatus("");
+        updateCounter();
         updateCameraUi();
     }
 
@@ -271,7 +275,7 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
                 updateCounter();
                 updateCameraUi();
             } catch (Exception e) {
-                cameraStatus.setText("Camera unavailable. Your saved photos are protected.");
+                showCameraStatus("Camera unavailable. Your saved photos are protected.");
             }
         }, androidx.core.content.ContextCompat.getMainExecutor(this));
     }
@@ -285,37 +289,43 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
         previewView.setScaleType(PreviewView.ScaleType.FILL_CENTER);
         cameraRoot.addView(previewView, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout top = new LinearLayout(this);
-        top.setOrientation(LinearLayout.HORIZONTAL);
-        top.setGravity(Gravity.CENTER_VERTICAL);
+        top.setOrientation(LinearLayout.VERTICAL);
         top.setPadding(dp(10), dp(6), dp(10), dp(6));
         top.setBackgroundColor(Color.argb(165, 0, 0, 0));
-        PhotoRequirements.Item selected = requirements.enabledItem(item);
-        LinearLayout itemBlock = new LinearLayout(this);
-        itemBlock.setOrientation(LinearLayout.VERTICAL);
-        TextView title = cameraText(selected == null ? "Extra photos" : selected.label, 15, true);
-        itemBlock.addView(title);
-        if (selected != null && !selected.instruction.isEmpty()) itemBlock.addView(cameraText(selected.instruction, 12, false));
-        top.addView(itemBlock, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        itemPicker = compactButton("Select photo item");
+        itemPicker.setTextSize(14);
+        itemPicker.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
+        itemPicker.setContentDescription("Choose a required photo item or Extra photos");
+        itemPicker.setOnClickListener(v -> showCameraItemPicker());
+        header.addView(itemPicker, new LinearLayout.LayoutParams(0, -2, 1));
         flashButton = compactButton("Flash Auto");
-        flashButton.setText(flash == ImageCapture.FLASH_MODE_AUTO ? "Flash Auto" : flash == ImageCapture.FLASH_MODE_ON ? "Flash On" : "Flash Off");
+        flashButton.setText(flashLabel());
         flashButton.setOnClickListener(v -> cycleFlash());
-        top.addView(flashButton);
+        LinearLayout.LayoutParams flashParams = new LinearLayout.LayoutParams(-2, -2);
+        flashParams.leftMargin = dp(4);
+        header.addView(flashButton, flashParams);
         torchButton = compactButton(torch ? "Torch On" : "Torch Off");
         torchButton.setOnClickListener(v -> toggleTorch());
         LinearLayout.LayoutParams torchParams = new LinearLayout.LayoutParams(-2, -2);
-        torchParams.leftMargin = dp(6);
-        top.addView(torchButton, torchParams);
+        torchParams.leftMargin = dp(4);
+        header.addView(torchButton, torchParams);
+        top.addView(header, new LinearLayout.LayoutParams(-1, -2));
+        cameraInstruction = cameraText("", 12, false);
+        cameraInstruction.setPadding(dp(3), dp(2), dp(3), 0);
+        cameraInstruction.setVisibility(View.GONE);
+        top.addView(cameraInstruction, new LinearLayout.LayoutParams(-1, -2));
+        cameraStatus = cameraText("Starting camera…", 12, false);
+        cameraStatus.setSingleLine(true);
+        cameraStatus.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        cameraStatus.setPadding(dp(3), dp(2), dp(3), 0);
+        cameraStatus.setVisibility(View.GONE);
+        top.addView(cameraStatus, new LinearLayout.LayoutParams(-1, -2));
         FrameLayout.LayoutParams topParams = new FrameLayout.LayoutParams(-1, -2, Gravity.TOP);
         if (landscape) topParams.rightMargin = dp(116);
         cameraRoot.addView(top, topParams);
-        cameraStatus = cameraText("Starting camera…", 14, false);
-        cameraStatus.setGravity(Gravity.CENTER);
-        cameraStatus.setPadding(dp(10), dp(5), dp(10), dp(5));
-        cameraStatus.setBackground(rounded(Color.argb(130, 0, 0, 0), 18));
-        FrameLayout.LayoutParams statusParams = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        statusParams.topMargin = dp(60);
-        if (landscape) statusParams.rightMargin = dp(116);
-        cameraRoot.addView(cameraStatus, statusParams);
         buildZoomSlider(landscape);
         if (landscape) buildLandscapeControls(); else buildPortraitControls();
         cameraRoot.setOnApplyWindowInsetsListener((view, insets) -> {
@@ -488,6 +498,7 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
         camera = bound;
         capture = useCapture;
         activePhysicalWide = physicalWide;
+        if (!physicalWide) defaultRearHasFlash = bound.getCameraInfo().hasFlashUnit();
         activeIntrinsicRatio = validRatio(intrinsicRatio);
         bound.getCameraInfo().getZoomState().observe(this, state -> {
             if (camera != bound || state == null) return;
@@ -500,7 +511,7 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
             updateZoomControls();
         });
         if (discover) discoverCameraCapabilities();
-        cameraStatus.setText("Ready. Take a photo or choose another view.");
+        showCameraStatus("");
         updateCameraUi();
     }
 
@@ -564,16 +575,16 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
             return;
         }
         if (physicalWideSelector == null || physicalWideSuppressed) {
-            cameraStatus.setText("Wide lens unavailable to this app. Use 1× and stand farther back.");
+            showCameraStatus("Wide lens unavailable. Use 1× and stand farther back.");
             return;
         }
         try {
             bindCamera(physicalWideSelector, physicalWideRatio, true, false);
-            cameraStatus.setText("Wide camera " + formatRatio(physicalWideRatio) + ".");
+            showCameraStatus("");
         } catch (Exception error) {
             physicalWideSuppressed = true;
             physicalWideSelector = null;
-            cameraStatus.setText("Wide camera could not open. Normal camera restored.");
+            showCameraStatus("Wide camera could not open. Normal camera restored.");
             bindDefaultAt(1f);
         }
     }
@@ -583,7 +594,7 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
             ZoomState state = camera == null ? null : camera.getCameraInfo().getZoomState().getValue();
             if (state != null) camera.getCameraControl().setZoomRatio(Math.max(state.getMinZoomRatio(), Math.min(state.getMaxZoomRatio(), ratio)));
         }
-        catch (Exception error) { cameraStatus.setText("Normal camera could not open."); }
+        catch (Exception error) { showCameraStatus("Normal camera could not open."); }
     }
     private void selectDefaultPreset(float ratio) {
         if (!BuildConfig.FIELD_SYNC_ENABLED || busy || camera == null) return;
@@ -616,14 +627,18 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
         boolean enabled = BuildConfig.FIELD_SYNC_ENABLED && camera != null && !busy;
         shutter.setEnabled(enabled);
         if (done != null) done.setEnabled(!busy);
-        boolean hasFlash = camera != null && camera.getCameraInfo().hasFlashUnit();
+        boolean activeFlash = camera != null && camera.getCameraInfo().hasFlashUnit();
+        boolean canUseFlash = activeFlash || (activePhysicalWide && defaultRearHasFlash);
         if (flashButton != null) {
-            flashButton.setText(!hasFlash ? "Flash —" : flash == ImageCapture.FLASH_MODE_AUTO ? "Flash Auto" : flash == ImageCapture.FLASH_MODE_ON ? "Flash On" : "Flash Off");
-            flashButton.setEnabled(hasFlash && !busy);
+            flashButton.setText(canUseFlash ? flashLabel() : "Flash —");
+            flashButton.setEnabled(canUseFlash && !busy);
+            flashButton.setContentDescription(canUseFlash && activePhysicalWide && !activeFlash
+                    ? flashLabel() + "; switches to 1× camera" : flashButton.getText());
         }
         if (torchButton != null) {
-            torchButton.setText(!hasFlash ? "Torch —" : torch ? "Torch On" : "Torch Off");
-            torchButton.setEnabled(hasFlash && !busy);
+            String torchLabel = torch ? "Torch On" : "Torch Off";
+            torchButton.setText(canUseFlash ? torchLabel + (activePhysicalWide ? " · 1×" : "") : "Torch —");
+            torchButton.setEnabled(canUseFlash && !busy);
         }
         if (wideButton != null) {
             boolean available = logicalWideAvailable || (physicalWideSelector != null && !physicalWideSuppressed);
@@ -650,17 +665,55 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
         handler.removeCallbacks(hideZoomSliderRunnable);
         handler.postDelayed(hideZoomSliderRunnable, ZOOM_SLIDER_HIDE_DELAY_MS);
     }
+    private String flashLabel() {
+        String label = flash == ImageCapture.FLASH_MODE_AUTO ? "Flash Auto" : flash == ImageCapture.FLASH_MODE_ON ? "Flash On" : "Flash Off";
+        return activePhysicalWide && defaultRearHasFlash ? label + " · 1×" : label;
+    }
+    private boolean ensureFlashCamera() {
+        if (camera != null && camera.getCameraInfo().hasFlashUnit()) return true;
+        if (camera != null) {
+            bindDefaultAt(1f);
+            if (camera != null && camera.getCameraInfo().hasFlashUnit()) {
+                showCameraStatus("Switched to 1× for flash and torch.");
+                return true;
+            }
+        }
+        showCameraStatus("Flash and torch are unavailable on this camera.");
+        updateCameraUi();
+        return false;
+    }
     private void cycleFlash() {
-        if (capture == null || camera == null || !camera.getCameraInfo().hasFlashUnit() || busy) return;
+        if (busy || !ensureFlashCamera() || capture == null) return;
         flash = flash == ImageCapture.FLASH_MODE_AUTO ? ImageCapture.FLASH_MODE_ON : flash == ImageCapture.FLASH_MODE_ON ? ImageCapture.FLASH_MODE_OFF : ImageCapture.FLASH_MODE_AUTO;
         capture.setFlashMode(flash);
-        flashButton.setText(flash == ImageCapture.FLASH_MODE_AUTO ? "Flash Auto" : flash == ImageCapture.FLASH_MODE_ON ? "Flash On" : "Flash Off");
+        showCameraStatus("");
+        updateCameraUi();
     }
     private void toggleTorch() {
-        if (camera == null || !camera.getCameraInfo().hasFlashUnit() || busy) return;
-        torch = !torch;
-        camera.getCameraControl().enableTorch(torch);
-        torchButton.setText(torch ? "Torch On" : "Torch Off");
+        if (busy || !ensureFlashCamera() || camera == null) return;
+        Camera target = camera;
+        boolean desired = !torch;
+        busy = true;
+        updateCameraUi();
+        com.google.common.util.concurrent.ListenableFuture<Void> request = target.getCameraControl().enableTorch(desired);
+        request.addListener(() -> {
+            try {
+                request.get();
+                ui(() -> {
+                    if (camera != target) return;
+                    torch = desired;
+                    busy = false;
+                    if (desired) showTransientCameraStatus("Torch on"); else showCameraStatus("");
+                    updateCameraUi();
+                });
+            } catch (Exception error) {
+                ui(() -> {
+                    busy = false;
+                    showCameraStatus("Torch could not be changed. Try again at 1×.");
+                    updateCameraUi();
+                });
+            }
+        }, androidx.core.content.ContextCompat.getMainExecutor(this));
     }
 
     private void take() {
@@ -682,7 +735,7 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
                     } catch (RuntimeException e) { saved(p.id); }
                 });
             } catch (Exception e) {
-                ui(() -> { busy = false; cameraStatus.setText(e.getMessage()); updateCameraUi(); });
+                ui(() -> { busy = false; showCameraStatus(e.getMessage()); updateCameraUi(); });
             }
         });
     }
@@ -693,12 +746,74 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
             ui(() -> {
                 busy = false;
                 if (cameraScreen) {
-                    cameraStatus.setText(p != null && p.readable() ? "Saved. Take another photo or tap Done." : "Photo did not save correctly. Check saved photos.");
+                    if (p != null && p.readable()) showTransientCameraStatus("Photo saved");
+                    else showCameraStatus("Photo did not save correctly. Check saved photos.");
                     updateCounter();
                     updateCameraUi();
                 }
             });
         });
+    }
+    private int countForItem(List<ProtectedPhoto> photos, String itemId) {
+        int count = 0;
+        for (ProtectedPhoto photo : photos) if (photo.readable() && photo.itemId.equals(itemId)) count++;
+        return count;
+    }
+    private void showCameraItemPicker() {
+        if (busy || requirements == null || itemPicker == null) return;
+        runtime.photos.io.execute(() -> {
+            List<ProtectedPhoto> photos = runtime.dao.photos(session.userId, session.organizationId, wo, run);
+            ui(() -> {
+                if (busy || !cameraScreen || itemPicker == null) return;
+                PopupMenu menu = new PopupMenu(this, itemPicker);
+                for (PhotoRequirements.Item choice : requirements.items) {
+                    if (!choice.enabled) continue;
+                    int count = countForItem(photos, choice.id);
+                    menu.getMenu().add(choice.label + " · " + count + "/" + choice.minimum)
+                            .setOnMenuItemClickListener(option -> {
+                                if (busy) return true;
+                                item = choice.id;
+                                updateCameraSelection(count);
+                                updateCounter();
+                                return true;
+                            });
+                }
+                int extras = countForItem(photos, "");
+                menu.getMenu().add("Extra photos · " + extras)
+                        .setOnMenuItemClickListener(option -> {
+                            if (busy) return true;
+                            item = "";
+                            updateCameraSelection(extras);
+                            updateCounter();
+                            return true;
+                        });
+                menu.show();
+            });
+        });
+    }
+    private void updateCameraSelection(int count) {
+        if (itemPicker == null || requirements == null) return;
+        PhotoRequirements.Item selected = requirements.enabledItem(item);
+        if (selected == null) {
+            itemPicker.setText("Extra photos · " + count + " saved ▼");
+            cameraInstruction.setText("");
+            cameraInstruction.setVisibility(View.GONE);
+        } else {
+            itemPicker.setText(selected.label + " · " + count + "/" + selected.minimum + " ▼");
+            cameraInstruction.setText(selected.instruction);
+            cameraInstruction.setVisibility(selected.instruction.isEmpty() ? View.GONE : View.VISIBLE);
+        }
+    }
+    private void showCameraStatus(String status) {
+        if (cameraStatus == null) return;
+        handler.removeCallbacks(clearCameraStatusRunnable);
+        cameraStatus.setText(status);
+        cameraStatus.setVisibility(status.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+    private void showTransientCameraStatus(String status) {
+        showCameraStatus(status);
+        handler.removeCallbacks(clearCameraStatusRunnable);
+        handler.postDelayed(clearCameraStatusRunnable, 1800L);
     }
     private void updateCounter() {
         runtime.photos.io.execute(() -> {
@@ -709,6 +824,7 @@ public final class PhotoActivity extends Activity implements LifecycleOwner {
                 if (cameraScreen && counter != null) {
                     PhotoRequirements.Item selected = requirements.enabledItem(item);
                     counter.setText(selected == null ? count + " saved" : count + "/" + selected.minimum + " saved");
+                    updateCameraSelection(count);
                 }
             });
         });
