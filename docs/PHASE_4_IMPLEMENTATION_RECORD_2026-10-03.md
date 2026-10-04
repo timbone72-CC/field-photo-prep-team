@@ -132,3 +132,14 @@ Using the retained v8 candidate and the synthetic Phase 4 Back item, the operato
 - Sideways capture of the same safe test area: Back counter advanced to 2/2.
 
 This passes the visible multi-shot/orientation counter check. It does not by itself verify original/derivative bytes on disk, survival through process restart, offline Finish, actual optical ultra-wide selection, flash firing or torch illumination. Those checks remain pending in the combined phone gate. The synthetic evidence remains disposable; no customer photos or Phase 5 delivery are involved.
+
+
+## Camera controls and item-selection correction — 2026-10-03 19:36 America/Chicago
+
+The operator supplied portrait and landscape camera screenshots and reported that neither Flash nor Torch works. Both controls show an unavailable dash while the preview is at the wide physical-camera ratio. In portrait, the persistent centered “Ready. Take a photo or choose another view.” overlay collides with the Admin-authored Back instruction. This is a **FAIL** for camera-control availability and portrait text layout. The earlier two-orientation capture/counter observation remains valid but does not prove flash/torch behavior or protected-file survival.
+
+The screenshot and code indicate the wide physical camera's CameraInfo reports no flash, which caused both controls to be disabled. The correction keeps Flash/Torch available when the normal rear camera has a flash: tapping either returns to 1× before applying that control, and the label identifies the 1× behavior. Torch UI now reflects completion/failure of CameraX's asynchronous request. If the default rear camera has no flash, the controls remain explicitly unavailable.
+
+The always-on Ready sentence is removed. Admin-authored item instructions remain visible, without an overlapping status overlay. The item heading becomes a dropdown listing enabled photo items with their current counts plus Extra photos, allowing the operator to select the next item without forced walking order.
+
+Candidate/recovery identity is raised to v10/v11 because v8 is installed and v9 remains the retained recovery. Runtime head **7183ec4d3423d975885efd97f9ce586222fe4854** contains the camera/UI fix and version identity update. Exact-head Android/Admin/database CI, new artifact identity verification and the corrected physical control/layout check are pending. Preserve installed app data; do not install v9 or use the intermediate v8/v9 rebuild.
